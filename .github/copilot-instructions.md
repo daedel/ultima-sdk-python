@@ -38,12 +38,12 @@ This is a Python SDK project organized as follows:
   ```bash
   black .
   ```
-- **Linting**: Use `flake8` or `ruff` for linting
+- **Linting**: Use `ruff` for linting (preferred for modern Python projects)
   ```bash
-  flake8 .
+  ruff check .
   ```
 - **Type Hints**: Use type hints for all functions and methods
-- **Docstrings**: Use Google-style or NumPy-style docstrings for all public APIs
+- **Docstrings**: Use Google-style docstrings for all public APIs
 
 ### Testing
 
@@ -111,14 +111,17 @@ As the project grows, refer to:
 ## Technologies and Tools
 
 - **Language**: Python 3.8+
-- **Suggested Libraries**:
+- **Suggested Third-Party Libraries**:
   - `pillow` - For image rendering
   - `numpy` - For efficient data manipulation
-  - `struct` - For binary file parsing
   - `pytest` - For testing
   - `black` - For code formatting
-  - `flake8` or `ruff` - For linting
+  - `ruff` - For linting
   - `mypy` - For type checking
+- **Standard Library Modules**:
+  - `struct` - For binary file parsing
+  - `pathlib` - For file path handling
+  - `typing` - For type hints
 
 ## Getting Started for Contributors
 
