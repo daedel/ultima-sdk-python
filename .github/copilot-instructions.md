@@ -2,7 +2,7 @@
 
 ## Project Summary
 
-This repository contains **ultima-sdk-python**, a Python library for extracting client information and rendering images from Ultima Online client files. The SDK provides tools to interact with, parse, and manipulate data from the classic MMORPG Ultima Online Client Files.
+This repository contains **ultima-sdk-python**, a Python library for extracting client information and rendering images from Ultima Online client files. The SDK provides tools to interact with, parse, and manipulate data from the classic MMORPG Ultima Online.
 
 ## Structure Overview
 
