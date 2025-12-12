@@ -3,18 +3,31 @@ Binary I/O extension utilities for reading/writing Ultima data files.
 """
 
 import struct
-from typing import BinaryIO, Union, List, Tuple
+from typing import BinaryIO, Union, Optional
 from io import BytesIO
 
 
 class BinaryReader:
     """Helper class for reading binary data."""
 
-    def __init__(self, data: Union[bytes, BinaryIO]):
-        if isinstance(data, bytes):
-            self.stream = BytesIO(data)
+    def __init__(self, data: Union[bytes, bytearray, memoryview, BinaryIO]):
+        if isinstance(data, (bytes, bytearray, memoryview)):
+            self.stream = BytesIO(bytes(data))
         else:
             self.stream = data
+
+    def _read_exact(self, count: int) -> bytes:
+        """Read exactly `count` bytes or raise EOFError."""
+        data = self.stream.read(count)
+        if len(data) != count:
+            pos = None
+            try:
+                pos = self.stream.tell()
+            except Exception:
+                pos = None
+            at = f" at offset {pos}" if pos is not None else ""
+            raise EOFError(f"Unexpected EOF: wanted {count} bytes, got {len(data)}{at}")
+        return data
 
     def read(self, count: int) -> bytes:
         """Read count bytes."""
@@ -22,55 +35,56 @@ class BinaryReader:
 
     def read_byte(self) -> int:
         """Read single byte."""
-        return struct.unpack('B', self.stream.read(1))[0]
+        return struct.unpack('B', self._read_exact(1))[0]
 
     def read_sbyte(self) -> int:
         """Read signed byte."""
-        return struct.unpack('b', self.stream.read(1))[0]
+        return struct.unpack('b', self._read_exact(1))[0]
 
     def read_int16(self) -> int:
         """Read 16-bit signed integer (little-endian)."""
-        return struct.unpack('<h', self.stream.read(2))[0]
+        return struct.unpack('<h', self._read_exact(2))[0]
 
     def read_uint16(self) -> int:
         """Read 16-bit unsigned integer (little-endian)."""
-        return struct.unpack('<H', self.stream.read(2))[0]
+        return struct.unpack('<H', self._read_exact(2))[0]
 
     def read_int32(self) -> int:
         """Read 32-bit signed integer (little-endian)."""
-        return struct.unpack('<i', self.stream.read(4))[0]
+        return struct.unpack('<i', self._read_exact(4))[0]
 
     def read_uint32(self) -> int:
         """Read 32-bit unsigned integer (little-endian)."""
-        return struct.unpack('<I', self.stream.read(4))[0]
+        return struct.unpack('<I', self._read_exact(4))[0]
 
     def read_int64(self) -> int:
         """Read 64-bit signed integer (little-endian)."""
-        return struct.unpack('<q', self.stream.read(8))[0]
+        return struct.unpack('<q', self._read_exact(8))[0]
 
     def read_uint64(self) -> int:
         """Read 64-bit unsigned integer (little-endian)."""
-        return struct.unpack('<Q', self.stream.read(8))[0]
+        return struct.unpack('<Q', self._read_exact(8))[0]
 
     def read_float(self) -> float:
         """Read 32-bit float (little-endian)."""
-        return struct.unpack('<f', self.stream.read(4))[0]
+        return struct.unpack('<f', self._read_exact(4))[0]
 
     def read_double(self) -> float:
         """Read 64-bit double (little-endian)."""
-        return struct.unpack('<d', self.stream.read(8))[0]
+        return struct.unpack('<d', self._read_exact(8))[0]
 
-    def read_string(self, length: int = None, encoding: str = 'utf-8', null_terminated: bool = False) -> str:
+    def read_string(self, length: Optional[int] = None, encoding: str = 'utf-8', null_terminated: bool = False) -> str:
         """Read string with optional null-termination."""
         if length is not None:
-            data = self.stream.read(length)
+            data = self._read_exact(length)
         elif null_terminated:
-            data = b''
+            buf = bytearray()
             while True:
-                byte = self.stream.read(1)
-                if not byte or byte == b'\x00':
+                b = self.stream.read(1)
+                if not b or b == b'\x00':
                     break
-                data += byte
+                buf.extend(b)
+            data = bytes(buf)
         else:
             raise ValueError("Either length or null_terminated must be specified")
 
@@ -93,7 +107,7 @@ class BinaryReader:
 class BinaryWriter:
     """Helper class for writing binary data."""
 
-    def __init__(self, stream: BinaryIO = None):
+    def __init__(self, stream: Optional[BinaryIO] = None):
         self.stream = stream or BytesIO()
 
     def write(self, data: bytes) -> None:
@@ -155,7 +169,7 @@ class BinaryWriter:
         """Get current position."""
         return self.stream.tell()
 
-    def get_buffer(self) -> bytes:
+    def get_buffer(self) -> Optional[bytes]:
         """Get accumulated bytes."""
         if isinstance(self.stream, BytesIO):
             return self.stream.getvalue()

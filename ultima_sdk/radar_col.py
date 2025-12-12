@@ -2,7 +2,7 @@
 RadarCol module - Manages radar color data.
 """
 
-from typing import List, Tuple
+from typing import List
 from .binary_extensions import BinaryReader
 from .files import Files
 from .exceptions import FileAccessException
@@ -11,7 +11,7 @@ from .exceptions import FileAccessException
 class RadarCol:
     """Static class for managing radar colors."""
 
-    _colors: List[Tuple[int, int, int]] = []
+    _colors: List[int] = []
     _initialized = False
 
     @classmethod

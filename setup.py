@@ -1,6 +1,6 @@
 
 """
-Setup configuration for Ultima SDK Python package.
+Setup configuration for the Ultima SDK Python package.
 """
 
 from setuptools import setup, find_packages
@@ -12,7 +12,7 @@ setup(
     name="ultima-sdk-python",
     version="1.0.0",
     author="UltimaWorks",
-    description="Python 1:1 conversion of the C# Ultima SDK",
+    description="A 1:1 Python conversion of the C# Ultima SDK",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/UltimaWorks/ultima-sdk-python",
