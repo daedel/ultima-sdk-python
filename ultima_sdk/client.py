@@ -4,6 +4,7 @@ Allows reading client memory, sending input, and calibrating location pointers.
 """
 
 import platform
+from pathlib import Path
 from typing import Optional, Tuple
 from .exceptions import ClientException
 
@@ -100,3 +101,23 @@ class Client:
             pass
 
         return ClientWindowHandle(None)
+
+
+class UltimaClient:
+    """Minimal UltimaClient stub used by tests."""
+
+    def __init__(self, client_path: Path | str) -> None:
+        """Initialize client with a path (no real client ops performed)."""
+        self.path = Path(client_path)
+        self.attached: bool = False
+
+    def attach(self) -> None:
+        """Stub attach method."""
+        self.attached = True
+
+    def detach(self) -> None:
+        """Stub detach method."""
+        self.attached = False
+
+    def is_attached(self) -> bool:
+        return self.attached

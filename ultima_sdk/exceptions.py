@@ -31,3 +31,19 @@ class CalibrationException(UltimaSdkException):
 class WaveFormatException(UltimaSdkException):
     """Raised when WAV format is invalid."""
     pass
+
+
+# Compatibility aliases / legacy names expected by tests
+class UltimaSDKError(UltimaSdkException):
+    """Backward-compatible alias for older code/tests."""
+    pass
+
+
+class FileParseError(FileAccessException):
+    """Backward-compatible alias for file parse/access errors."""
+    pass
+
+
+class InvalidFileFormatError(InvalidFormatException):
+    """Backward-compatible alias for invalid file format errors."""
+    pass

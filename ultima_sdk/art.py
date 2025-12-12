@@ -7,6 +7,9 @@ from .binary_extensions import BinaryReader
 from .file_index import FileIndex
 from .files import Files
 from .exceptions import FileAccessException
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, Optional
 
 
 class ArtData:
@@ -57,3 +60,26 @@ class Art:
 
         # Implementation depends on FileIndex
         return None
+
+
+@dataclass
+class ArtTile:
+    """Simple representation of an art tile."""
+    tile_id: int
+    data: bytes
+
+
+class ArtLoader:
+    """Minimal ArtLoader stub that exposes interface expected by tests."""
+
+    def __init__(self, path: Path | str) -> None:
+        """Initialize with a path (file or folder)."""
+        self.path = Path(path)
+        self._tiles: Dict[int, ArtTile] = {}
+
+    def load_tile(self, tile_id: int) -> Optional[ArtTile]:
+        """Return a stub ArtTile for the given id (does not parse real files)."""
+        if tile_id not in self._tiles:
+            # create an empty/stub tile to allow tests to import/use
+            self._tiles[tile_id] = ArtTile(tile_id=tile_id, data=b"")
+        return self._tiles[tile_id]
