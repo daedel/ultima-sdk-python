@@ -1,4 +1,4 @@
 include README.md
 include LICENSE
 include requirements.txt
-recursive-include ultima-sdk *.py
+recursive-include ultima_sdk *.py
