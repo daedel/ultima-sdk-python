@@ -20,7 +20,7 @@ This is a Python SDK project organized as follows:
 
 ### Development Setup
 
-1. **Python Version**: Use Python 3.12 or higher
+1. **Python Version**: Use Python 3.8 or higher
 2. **Virtual Environment**: Always work within a virtual environment
    ```bash
    python -m venv venv
