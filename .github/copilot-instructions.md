@@ -2,7 +2,7 @@
 
 ## Project Summary
 
-This repository contains **ultima-sdk-python**, a Python library for extracting client information and rendering images from Ultima Online client files. The SDK provides tools to interact with, parse, and manipulate data from the classic MMORPG Ultima Online Client Files.
+This repository contains **ultima-sdk-python**, a Python library for extracting client information and rendering images from Ultima Online client files. The SDK provides tools to interact with, parse, and manipulate data from the classic MMORPG Ultima Online.
 
 ## Structure Overview
 
@@ -11,7 +11,7 @@ This is a Python SDK project organized as follows:
 - `/` - Root directory containing README and configuration files
 - `README.md` - Main project documentation
 - Future structure will include:
-  - `/ultima/` or `/src/` - Main source code for the SDK
+  - `/ultima_sdk/` or `/src/` - Main source code for the SDK
   - `/tests/` - Test files using pytest or unittest
   - `/docs/` - Additional documentation
   - `/examples/` - Example usage scripts
@@ -52,7 +52,7 @@ This is a Python SDK project organized as follows:
 - **Running Tests**:
   ```bash
   pytest
-  pytest --cov=ultima  # With coverage
+  pytest --cov=ultima_sdk  # With coverage
   ```
 - **Test Files**: Place tests in `/tests/` directory, mirroring the source structure
 - **Test Naming**: Use descriptive names starting with `test_`
