@@ -1,0 +1,236 @@
+"""
+Files module - Manages Ultima Online client data file paths.
+Handles file discovery, path management, and file availability checking.
+"""
+
+import os
+import platform
+from typing import Dict, Optional, List
+from pathlib import Path
+
+
+class Files:
+    """Static utility class for managing Ultima Online data file paths."""
+
+    # List of all known Ultima Online data files
+    UO_FILES = [
+        "anim.idx", "anim.mul", "anim2.idx", "anim2.mul", "anim3.idx", "anim3.mul",
+        "anim4.idx", "anim4.mul", "anim5.idx", "anim5.mul", "animdata.mul",
+        "art.mul", "artidx.mul", "artlegacymul.uop",
+        "body.def", "bodyconv.def", "client.exe",
+        "cliloc.custom1", "cliloc.custom2", "cliloc.deu", "cliloc.enu",
+        "equipconv.def",
+        "facet00.mul", "facet01.mul", "facet02.mul", "facet03.mul", "facet04.mul", "facet05.mul",
+        "fonts.mul",
+        "gump.def", "gumpart.mul", "gumpidx.mul", "gumpartlegacymul.uop",
+        "hues.mul", "light.mul", "lightidx.mul",
+        "map0.mul", "map1.mul", "map2.mul", "map3.mul", "map4.mul", "map5.mul",
+        "map6.mul", "map7.mul", "map8.mul", "map9.mul", "map10.mul",
+        "map0legacymul.uop", "map1legacymul.uop", "map2legacymul.uop", "map3legacymul.uop",
+        "map4legacymul.uop", "map5legacymul.uop", "map6legacymul.uop", "map7legacymul.uop",
+        "map8legacymul.uop", "map9legacymul.uop", "map10legacymul.uop",
+        "mapdif0.mul", "mapdif1.mul", "mapdif2.mul", "mapdif3.mul", "mapdif4.mul",
+        "mapdifl0.mul", "mapdifl1.mul", "mapdifl2.mul", "mapdifl3.mul", "mapdifl4.mul",
+        "mobtypes.txt",
+        "multi.idx", "multi.mul", "multimap.rle",
+        "radarcol.mul",
+        "skillgrp.mul",
+        "skills.idx", "skills.mul",
+        "sound.def", "sound.mul", "soundidx.mul", "soundlegacymul.uop",
+        "speech.mul",
+        "stadif0.mul", "stadif1.mul", "stadif2.mul", "stadif3.mul", "stadif4.mul",
+        "stadifi0.mul", "stadifi1.mul", "stadifi2.mul", "stadifi3.mul", "stadifi4.mul",
+        "stadifl0.mul", "stadifl1.mul", "stadifl2.mul", "stadifl3.mul", "stadifl4.mul",
+        "staidx0.mul", "staidx1.mul", "staidx2.mul", "staidx3.mul", "staidx4.mul",
+        "staidx5.mul", "staidx6.mul", "staidx7.mul", "staidx8.mul", "staidx9.mul", "staidx10.mul",
+        "statics0.mul", "statics1.mul", "statics2.mul", "statics3.mul", "statics4.mul", "statics5.mul",
+        "statics6.mul", "statics7.mul", "statics8.mul", "statics9.mul", "statics10.mul",
+        "texidx.mul", "texmaps.mul",
+        "tiledata.mul",
+        "unifont.mul", "unifont1.mul", "unifont2.mul", "unifont3.mul", "unifont4.mul",
+        "unifont5.mul", "unifont6.mul", "unifont7.mul", "unifont8.mul", "unifont9.mul",
+        "unifont10.mul", "unifont11.mul", "unifont12.mul",
+        "uotd.exe", "verdata.mul"
+    ]
+
+    # Registry keys to check (Windows only)
+    KNOWN_REG_KEYS = [
+        r"Origin Worlds Online\Ultima Online\1.0",
+        r"Origin Worlds Online\Ultima Online Third Dawn\1.0",
+        r"EA GAMES\Ultima Online Samurai Empire",
+        r"EA GAMES\Ultima Online Samurai Empire\1.0",
+        r"EA Games\Ultima Online: Mondain's Legacy",
+        r"EA Games\Ultima Online: Mondain's Legacy\1.0",
+        r"Electronic Arts\EA Games\Ultima Online Stygian Abyss Classic",
+        r"Electronic Arts\EA Games\Ultima Online Classic",
+    ]
+
+    KNOWN_REG_PATH_KEYS = ["ExePath", "Install Dir", "InstallDir"]
+
+    # Class variables
+    _directory: Optional[str] = None
+    _mul_path: Dict[str, str] = {}
+    _root_dir: str = ""
+    _cache_data: bool = True
+    _file_save_callbacks: List[callable] = []
+
+    @classmethod
+    def initialize(cls, root_dir: Optional[str] = None) -> None:
+        """Initialize the Files system with optional root directory."""
+        if root_dir:
+            cls.set_mul_path(root_dir)
+        else:
+            cls._directory = cls._load_directory()
+            cls.load_mul_path()
+
+    @classmethod
+    def get_directory(cls) -> Optional[str]:
+        """Get the Ultima Online client directory."""
+        if cls._directory is None:
+            cls._directory = cls._load_directory()
+        return cls._directory
+
+    @classmethod
+    def set_directory(cls, path: str) -> None:
+        """Set the Ultima Online client directory."""
+        cls._directory = path
+        cls.load_mul_path()
+
+    @classmethod
+    def get_root_dir(cls) -> str:
+        """Get the root directory for relative paths."""
+        return cls._root_dir
+
+    @classmethod
+    def set_root_dir(cls, path: str) -> None:
+        """Set the root directory for relative paths."""
+        cls._root_dir = path
+
+    @classmethod
+    def is_cache_data(cls) -> bool:
+        """Get whether data should be cached."""
+        return cls._cache_data
+
+    @classmethod
+    def set_cache_data(cls, value: bool) -> None:
+        """Set whether data should be cached."""
+        cls._cache_data = value
+
+    @classmethod
+    def load_mul_path(cls) -> None:
+        """Load all .mul file paths from the directory."""
+        cls._mul_path = {}
+        cls._root_dir = cls._directory or ""
+
+        for file in cls.UO_FILES:
+            file_path = os.path.join(cls._root_dir, file)
+            if os.path.exists(file_path):
+                cls._mul_path[file.lower()] = file
+            else:
+                cls._mul_path[file.lower()] = ""
+
+    @classmethod
+    def set_mul_path(cls, root_path: str) -> None:
+        """Set the root path and reload all file paths."""
+        cls._root_dir = root_path
+        cls._mul_path = {}
+
+        for file in cls.UO_FILES:
+            file_path = os.path.join(cls._root_dir, file)
+            if os.path.exists(file_path):
+                cls._mul_path[file.lower()] = file
+            else:
+                cls._mul_path[file.lower()] = ""
+
+    @classmethod
+    def set_mul_path_entry(cls, key: str, path: str) -> None:
+        """Set a specific file path."""
+        cls._mul_path[key.lower()] = path
+
+    @classmethod
+    def get_file_path(cls, file: str) -> Optional[str]:
+        """Get the full path to a specific file, or None if not found."""
+        if not cls._mul_path:
+            return None
+
+        key = file.lower()
+        if key not in cls._mul_path:
+            return None
+
+        path = cls._mul_path[key]
+        if not path:
+            return None
+
+        # If path is relative, join with root
+        if not os.path.isabs(path):
+            path = os.path.join(cls._root_dir, path)
+
+        return path if os.path.exists(path) else None
+
+    @classmethod
+    def get_mul_path(cls) -> Dict[str, str]:
+        """Get the entire mul path dictionary."""
+        return cls._mul_path.copy()
+
+    @classmethod
+    def add_file_save_callback(cls, callback: callable) -> None:
+        """Add a callback to be invoked when files are saved."""
+        if callback not in cls._file_save_callbacks:
+            cls._file_save_callbacks.append(callback)
+
+    @classmethod
+    def remove_file_save_callback(cls, callback: callable) -> None:
+        """Remove a file save callback."""
+        if callback in cls._file_save_callbacks:
+            cls._file_save_callbacks.remove(callback)
+
+    @classmethod
+    def fire_file_save_event(cls) -> None:
+        """Invoke all registered file save callbacks."""
+        for callback in cls._file_save_callbacks:
+            try:
+                callback()
+            except Exception as e:
+                print(f"Error in file save callback: {e}")
+
+    @staticmethod
+    def _load_directory() -> Optional[str]:
+        """Attempt to find the Ultima Online directory."""
+        if platform.system() == "Windows":
+            try:
+                import winreg
+                for reg_key in Files.KNOWN_REG_KEYS:
+                    for path_key in Files.KNOWN_REG_PATH_KEYS:
+                        try:
+                            key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, f"SOFTWARE\\{reg_key}")
+                            value, _ = winreg.QueryValueEx(key, path_key)
+                            winreg.CloseKey(key)
+
+                            if value and os.path.isdir(value):
+                                return value
+                            if value and os.path.isfile(value):
+                                return os.path.dirname(value)
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+        # Try common paths
+        common_paths = [
+            Path.home() / "Documents" / "Ultima Online",
+            Path.home() / "Games" / "Ultima Online",
+            Path("/opt/ultimaonline"),
+            Path("C:/Program Files/Ultima Online"),
+            Path("C:/Program Files (x86)/Ultima Online"),
+            Path("C:/Ultima Online"),
+        ]
+
+        for path in common_paths:
+            if path.exists():
+                return str(path)
+
+        return None
+
+
+# Initialize on module load
+Files.initialize()
