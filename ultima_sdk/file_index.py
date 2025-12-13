@@ -50,7 +50,7 @@ class FileIndex:
             pass
 
     def add_entry(self, index: int, offset: int, size: int) -> None:
-        self.entries.append(FileIndexEntry(index=index, offset=offset, size=size))
+        self.entries.append(IndexEntry(offset, size))
 
     def get_entry(self, index: int) -> Optional[IndexEntry]:
         """Get index entry by index."""
