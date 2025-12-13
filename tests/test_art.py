@@ -45,17 +45,17 @@ class TestArtLoader:
 
     def test_load_tile(self, loader: ArtLoader, sample_art_data: bytes) -> None:
         """Test loading a single tile."""
-        stream = BytesIO(sample_art_data)
-        tile = loader.load_tile(stream, tile_id=0)
+        # stream = BytesIO(sample_art_data)
+        tile = loader.load_tile(tile_id=0)
         assert isinstance(tile, ArtTile)
         assert tile.width == 44
         assert tile.height == 44
 
     def test_load_tile_invalid_data(self, loader: ArtLoader) -> None:
         """Test loading invalid data raises FileParseError."""
-        stream = BytesIO(b"short")
+        # stream = BytesIO(b"short")
         with pytest.raises(FileParseError):
-            loader.load_tile(stream, tile_id=0)
+            loader.load_tile(tile_id=0)
 
     @pytest.mark.parametrize("tile_id", [0, 1000, 0x3FFF])  # Valid range
     def test_load_tile_by_id(self, loader: ArtLoader, sample_art_data: bytes, tile_id: int) -> None:
