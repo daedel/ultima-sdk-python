@@ -11,7 +11,7 @@ class TestUltimaSDKError:
         """Test basic initialization."""
         error = UltimaSDKError("Test message")
         assert str(error) == "Test message"
-        assert error.message == "Test message"
+        assert error.args[0] == "Test message"
 
     def test_with_cause(self) -> None:
         """Test exception with cause."""
