@@ -2,8 +2,17 @@
 FileIndex module - Manages indexed file access for .mul files.
 """
 
-from typing import Optional, Tuple, BinaryIO
+from dataclasses import dataclass
+from typing import List, Optional
 from .binary_extensions import BinaryReader
+
+
+@dataclass
+class FileIndexEntry:
+    """Representation of a file index entry."""
+    index: int
+    offset: int
+    size: int
 
 
 class IndexEntry:
@@ -39,6 +48,9 @@ class FileIndex:
                         break
         except Exception:
             pass
+
+    def add_entry(self, index: int, offset: int, size: int) -> None:
+        self.entries.append(IndexEntry(offset, size))
 
     def get_entry(self, index: int) -> Optional[IndexEntry]:
         """Get index entry by index."""
