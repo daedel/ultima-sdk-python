@@ -33,7 +33,7 @@ class TestArtLoader:
     @pytest.fixture
     def loader(self) -> ArtLoader:
         """Create a test loader."""
-        return ArtLoader()
+        return ArtLoader("dummy_path")
 
     @pytest.fixture
     def sample_art_data(self) -> bytes:
