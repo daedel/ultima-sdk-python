@@ -44,18 +44,26 @@ class TestArtLoader:
         return header + pixels
 
     def test_load_tile(self, loader: ArtLoader, sample_art_data: bytes) -> None:
-        """Test loading a single tile."""
-        # stream = BytesIO(sample_art_data)
-        tile = loader.load_tile(tile_id=0)
-        assert isinstance(tile, ArtTile)
-        assert tile.width == 44
-        assert tile.height == 44
+        """Test loading a tile via FileIndex + file read."""
+        with patch.object(loader, 'file_index') as mock_index:
+            mock_index.get_entry.return_value = type(
+                'Entry', (), {'offset': 0, 'length': len(sample_art_data)}
+            )()
+            with patch('builtins.open', mock_open(read_data=sample_art_data)):
+                tile = loader.load_tile(0)
+                assert tile is not None
+                assert tile.width == 44
+                assert tile.height == 44
 
     def test_load_tile_invalid_data(self, loader: ArtLoader) -> None:
         """Test loading invalid data raises FileParseError."""
-        # stream = BytesIO(b"short")
-        with pytest.raises(FileParseError):
-            loader.load_tile(tile_id=0)
+        with patch.object(loader, 'file_index') as mock_index:
+            mock_index.get_entry.return_value = type(
+                'Entry', (), {'offset': 0, 'length': 7}
+            )()
+            with patch('builtins.open', mock_open(read_data=b"invalid")):
+                with pytest.raises(FileParseError):
+                    loader.load_tile(0)
 
     @pytest.mark.parametrize("tile_id", [0, 1000, 0x3FFF])  # Valid range
     def test_load_tile_by_id(self, loader: ArtLoader, sample_art_data: bytes, tile_id: int) -> None:

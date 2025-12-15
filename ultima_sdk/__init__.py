@@ -10,7 +10,8 @@ __author__ = "UltimaWorks"
 _EXPORTS = [
     'Files', 'TileData', 'Hues', 'Art', 'Animations', 'Gumps', 'Sound', 'Light',
     'Textures', 'Multis', 'Map', 'Skills', 'AnimationEdit', 'StringList',
-    'RadarCol', 'SkillGroups', 'FileIndex', 'TileMatrix', 'BinaryReader'
+    'RadarCol', 'SkillGroups', 'FileIndex', 'TileMatrix', 'BinaryReader', 'Verdata',
+    'EquipConv'
 ]
 
 __all__ = []

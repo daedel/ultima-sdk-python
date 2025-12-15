@@ -38,6 +38,9 @@ This SDK provides full access to Ultima Online client data files, including:
 - Multi-tile object data (houses, ships)
 - String and skill information
 
+It also includes small, pragmatic helpers for rendering decoded pixel buffers
+to Pillow images (see "Rendering" below).
+
 ## Wiki
 
 For detailed documentation, examples, and development guides, see the project [Wiki](https://github.com/UltimaWorks/ultima-sdk-python/wiki)
@@ -249,6 +252,23 @@ Sound.initialize()
 sound = Sound.get_sound(sound_id)
 ```
 
+### Rendering
+
+Many UO assets store pixels as packed 16-bit colors or raw RGB/RGBA buffers.
+When you already have a decoded pixel buffer, you can convert it to a Pillow
+image using the helpers in `ultima_sdk.rendering`.
+
+```python
+from ultima_sdk.rendering import image_from_pixels
+
+# width/height known from the asset format
+img = image_from_pixels(width=44, height=44, pixels=pixel_bytes)
+img.save("out.png")
+```
+
+Some SDK objects also expose `to_image()` when they hold width/height/pixels
+(e.g. `ArtTile.to_image()` and `ArtData.to_image()`).
+
 ### Map
 
 Access map and terrain data.
@@ -321,6 +341,17 @@ This SDK maintains API compatibility with the C# Ultima SDK while following Pyth
 - Binary I/O uses `BinaryReader`/`BinaryWriter` helpers
 - File discovery uses platform-specific registry queries (Windows) and common paths
 - Lazy initialization pattern for resource-heavy modules
+
+---
+
+## Implementation Status
+
+This project aims for a 1:1 API surface with the original C# SDK, but not every
+module has full file decoding implemented yet.
+
+- **Art**: Reads `artidx.mul` + `art.mul` and decodes common static art encodings; use `Art.get_art(...).to_image()` or `ultima_sdk.rendering.image_from_pixels()`.
+- **Rendering helpers**: Basic Pillow conversions for RGB/RGBA and common UO 16-bit 5-5-5 buffers.
+- **Other modules**: Many expose paths and/or placeholders; decoding work is ongoing (gumps → maps/statics → animations).
 
 ---
 

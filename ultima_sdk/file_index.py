@@ -29,10 +29,14 @@ class FileIndexEntry:
 class IndexEntry:
     """Internal index entry used by FileIndex when loading from disk."""
 
-    def __init__(self, offset: int, size: int, extra: int = 0):
+    def __init__(self, offset: int, length: int, extra: int = 0):
         self.offset = offset
-        self.size = size
+        self.length = length
         self.extra = extra
+
+    @property
+    def size(self) -> int:
+        return self.length
 
 
 class FileIndex:
@@ -42,9 +46,15 @@ class FileIndex:
     to populate `entries` from raw index data.
     """
 
-    def __init__(self, idx_path: Optional[str] = None, mul_path: Optional[str] = None):
+    def __init__(
+        self,
+        idx_path: Optional[str] = None,
+        mul_path: Optional[str] = None,
+        file_id: Optional[int] = None,
+    ):
         self.idx_path = idx_path
         self.mul_path = mul_path
+        self.file_id = file_id
         self.entries: List[IndexEntry] = []
         if idx_path and mul_path:
             self._load_index()
@@ -56,10 +66,12 @@ class FileIndex:
                 reader = BinaryReader(f)
                 while True:
                     try:
-                        offset = reader.read_uint32()
-                        size = reader.read_uint32()
-                        extra = reader.read_uint32()
-                        self.entries.append(IndexEntry(offset, size, extra))
+                        # Many MUL idx formats store signed int32 values where -1
+                        # indicates a missing entry.
+                        offset = reader.read_int32()
+                        length = reader.read_int32()
+                        extra = reader.read_int32()
+                        self.entries.append(IndexEntry(offset, length, extra))
                     except EOFError:
                         break
         except FileNotFoundError:
@@ -99,12 +111,45 @@ class FileIndex:
             return self.entries[index]
         raise IndexError("index out of range")
 
-    def read_entry(self, index: int) -> Optional[bytes]:
-        """Read data for index entry from associated mul file if available."""
-        entry = self.get_entry(index)
+    def read_raw(self, index: int) -> Optional[bytes]:
+        """Read raw bytes for an entry from the associated mul file.
+
+        Returns None for missing entries (e.g. offset < 0 or length <= 0).
+        """
+        if index is None or index < 0:
+            return None
+
+        # verdata.mul overrides: allow patched blocks to supersede idx/mul.
+        # Import locally to avoid a hard dependency/cycle at import time.
+        if self.file_id is not None:
+            try:
+                from .verdata import Verdata
+
+                patch = Verdata.read_patch(self.file_id, index)
+                if patch is not None:
+                    return patch
+            except Exception:
+                # If verdata is unreadable, fall back to base MUL.
+                pass
+
+        try:
+            entry = self.get_entry(index)
+        except IndexError:
+            return None
+        if entry.offset is None or entry.length is None:
+            return None
+        if entry.offset < 0 or entry.length <= 0:
+            return None
+        if not self.mul_path:
+            return None
+
         try:
             with open(self.mul_path, 'rb') as f:
                 f.seek(entry.offset)
                 return f.read(entry.length)
         except Exception:
             return None
+
+    # Backward compatible alias
+    def read_entry(self, index: int) -> Optional[bytes]:
+        return self.read_raw(index)

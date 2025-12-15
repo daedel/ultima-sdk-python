@@ -46,7 +46,7 @@ python test_ultima.py
 
 - Complete Python SDK
 - 27 modules ready to use
-- No external dependencies
+- Uses Pillow for image rendering helpers
 - MIT licensed
 
 ### README.md (Inside ZIP)

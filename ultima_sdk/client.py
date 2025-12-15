@@ -10,6 +10,95 @@ from typing import Optional, Tuple
 from .exceptions import ClientException
 
 
+class _WinApi:
+    """Thin Win32 wrapper used by `Client`.
+
+    Kept as a small, patchable surface for tests; callers should not rely on it.
+    """
+
+    PROCESS_QUERY_INFORMATION = 0x0400
+    PROCESS_VM_READ = 0x0010
+
+    def __init__(self):
+        import ctypes
+        from ctypes import wintypes
+
+        self._ctypes = ctypes
+        self._wintypes = wintypes
+        self.user32 = ctypes.windll.user32
+        self.kernel32 = ctypes.windll.kernel32
+
+        # Signature setup (best-effort; some environments don't need this)
+        try:
+            self.user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+            self.user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+        except Exception:
+            pass
+
+        try:
+            self.kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+            self.kernel32.OpenProcess.restype = wintypes.HANDLE
+        except Exception:
+            pass
+
+        try:
+            self.kernel32.ReadProcessMemory.argtypes = [
+                wintypes.HANDLE,
+                wintypes.LPCVOID,
+                wintypes.LPVOID,
+                ctypes.c_size_t,
+                ctypes.POINTER(ctypes.c_size_t),
+            ]
+            self.kernel32.ReadProcessMemory.restype = wintypes.BOOL
+        except Exception:
+            pass
+
+        try:
+            self.kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+            self.kernel32.CloseHandle.restype = wintypes.BOOL
+        except Exception:
+            pass
+
+    def get_pid_from_hwnd(self, hwnd: int) -> int:
+        pid = self._wintypes.DWORD()
+        self.user32.GetWindowThreadProcessId(hwnd, self._ctypes.byref(pid))
+        return int(pid.value)
+
+    def open_process_for_read(self, pid: int):
+        handle = self.kernel32.OpenProcess(
+            self.PROCESS_QUERY_INFORMATION | self.PROCESS_VM_READ,
+            False,
+            int(pid),
+        )
+        if not handle:
+            return None
+        return handle
+
+    def close_handle(self, handle) -> None:
+        try:
+            self.kernel32.CloseHandle(handle)
+        except Exception:
+            pass
+
+    def read_process_memory(self, process_handle, address: int, size: int) -> bytes:
+        buf = self._ctypes.create_string_buffer(size)
+        bytes_read = self._ctypes.c_size_t(0)
+        ok = self.kernel32.ReadProcessMemory(
+            process_handle,
+            self._ctypes.c_void_p(int(address)),
+            buf,
+            size,
+            self._ctypes.byref(bytes_read),
+        )
+        if not ok:
+            raise ClientException("ReadProcessMemory failed")
+        return buf.raw[: int(bytes_read.value)]
+
+
+def _get_winapi() -> _WinApi:
+    return _WinApi()
+
+
 class ClientWindowHandle:
     """Represents a client window handle."""
 
@@ -78,14 +167,95 @@ class Client:
     def calibrate(cls, x: int = None, y: int = None, z: int = None) -> bool:
         """Calibrate client location pointer."""
         cls._location_pointer = None
-        # Implementation would require memory access
+
+        if not cls.is_running():
+            return False
+
+        if platform.system() != "Windows":
+            return False
+
+        # Optional explicit pointer via env var for deterministic setup.
+        import os
+
+        pointer_env = os.environ.get("UO_LOCATION_POINTER")
+        candidate_pointers = []
+        if pointer_env:
+            try:
+                candidate_pointers.append(int(pointer_env, 0))
+            except ValueError:
+                raise ClientException("Invalid UO_LOCATION_POINTER")
+
+        # If the caller didn't provide a known coordinate triple, we can only
+        # validate that the pointer is readable.
+        need_match = x is not None and y is not None and z is not None
+
+        hwnd = cls.get_handle().handle
+        winapi = _get_winapi()
+        pid = winapi.get_pid_from_hwnd(hwnd)
+        proc = winapi.open_process_for_read(pid)
+        if not proc:
+            raise ClientException("Unable to open client process")
+
+        try:
+            for ptr in candidate_pointers:
+                loc = cls._read_location_from_process(winapi, proc, ptr)
+                if loc is None:
+                    continue
+                if need_match:
+                    lx, ly, lz, _map = loc
+                    if lx == x and ly == y and lz == z:
+                        cls._location_pointer = ptr
+                        return True
+                else:
+                    cls._location_pointer = ptr
+                    return True
+        finally:
+            winapi.close_handle(proc)
+
         return False
 
     @classmethod
     def find_location(cls) -> Optional[Tuple[int, int, int, int]]:
         """Find current player location."""
-        # Implementation would require memory access
-        return None
+        if not cls.is_running():
+            return None
+
+        if platform.system() != "Windows":
+            return None
+
+        if cls._location_pointer is None:
+            return None
+
+        hwnd = cls.get_handle().handle
+        winapi = _get_winapi()
+        pid = winapi.get_pid_from_hwnd(hwnd)
+        proc = winapi.open_process_for_read(pid)
+        if not proc:
+            raise ClientException("Unable to open client process")
+
+        try:
+            return cls._read_location_from_process(winapi, proc, int(cls._location_pointer))
+        finally:
+            winapi.close_handle(proc)
+
+    @classmethod
+    def _read_location_from_process(cls, winapi: _WinApi, process_handle, pointer: int) -> Optional[Tuple[int, int, int, int]]:
+        """Read (x,y,z,map) from a pointer address.
+
+        Layout is treated as 4 little-endian int32 values at offsets 0,4,8,12.
+        """
+        import struct
+
+        try:
+            raw = winapi.read_process_memory(process_handle, pointer, 16)
+        except ClientException:
+            return None
+
+        if len(raw) < 16:
+            return None
+
+        x, y, z, map_id = struct.unpack("<iiii", raw[:16])
+        return int(x), int(y), int(z), int(map_id)
 
     @staticmethod
     def _find_handle() -> ClientWindowHandle:
