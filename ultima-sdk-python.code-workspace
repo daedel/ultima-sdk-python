@@ -2,10 +2,9 @@
 	"folders": [
 		{
 			"path": ".",
-			"UO_ROOT": "C:\\Program Files (x86)\\Electronic Arts\\Ultima Online Classic"
 		}
 	],
 	"settings": {
-		"terminal.integrated.automationProfile.windows": {}
+		"terminal.integrated.automationProfile.windows": null
 	}
 }
