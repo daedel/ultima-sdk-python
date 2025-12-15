@@ -5,8 +5,10 @@ Handles file discovery, path management, and file availability checking.
 
 import os
 import platform
+import warnings
 from typing import Dict, Optional, List
 from pathlib import Path
+from .exceptions import FileAccessException
 
 
 class Files:
@@ -75,13 +77,37 @@ class Files:
     _file_save_callbacks: List[callable] = []
 
     @classmethod
-    def initialize(cls, root_dir: Optional[str] = None) -> None:
-        """Initialize the Files system with optional root directory."""
+    def initialize(cls, root_dir: Optional[str] = None) -> bool:
+        """Initialize the Files system with optional root directory.
+
+        Returns True if a valid UO directory was found and paths loaded,
+        False otherwise. Detects environment variables `UO_ROOT` or
+        `ULTIMA_ONLINE_DIR` before checking platform registry/common paths.
+        """
+        # Allow environment variable override
+        env_root = os.environ.get("UO_ROOT") or os.environ.get("ULTIMA_ONLINE_DIR")
+        if root_dir is None and env_root:
+            root_dir = env_root
+
         if root_dir:
             cls.set_mul_path(root_dir)
-        else:
-            cls._directory = cls._load_directory()
-            cls.load_mul_path()
+            # confirm we found at least one file
+            if any(v for v in cls._mul_path.values()):
+                return True
+            warnings.warn(f"No known UO data files found in provided directory: {root_dir}")
+            return False
+
+        cls._directory = cls._load_directory()
+        if not cls._directory:
+            warnings.warn("Could not auto-detect Ultima Online directory. "
+                          "Call Files.set_directory(path) or set UO_ROOT environment variable.")
+            # leave _mul_path empty to make failure explicit
+            cls._mul_path = {}
+            cls._root_dir = ""
+            return False
+
+        cls.load_mul_path()
+        return any(v for v in cls._mul_path.values())
 
     @classmethod
     def get_directory(cls) -> Optional[str]:
@@ -150,14 +176,28 @@ class Files:
     @classmethod
     def get_file_path(cls, file: str) -> Optional[str]:
         """Get the full path to a specific file, or None if not found."""
+        # If we haven't loaded any paths yet, try to initialize (non-intrusive)
         if not cls._mul_path:
-            return None
+            # Try a non-raising detection once
+            try:
+                cls.initialize()
+            except Exception:
+                pass
+
+            if not cls._mul_path:
+                warnings.warn("Files.get_file_path() called before UO data path was set. "
+                              "Call Files.set_directory(path) or Files.initialize(path).")
+                return None
 
         key = file.lower()
         if key not in cls._mul_path:
+            # Allow arbitrary filenames (not in known UO list) by checking root dir directly
+            candidate = os.path.join(cls._root_dir, file)
+            if os.path.exists(candidate):
+                return candidate
             return None
 
-        path = cls._mul_path[key]
+        path = cls._mul_path.get(key, "")
         if not path:
             return None
 
@@ -171,6 +211,40 @@ class Files:
     def get_mul_path(cls) -> Dict[str, str]:
         """Get the entire mul path dictionary."""
         return cls._mul_path.copy()
+
+    @classmethod
+    def require_file_path(cls, file: str) -> str:
+        """Return the absolute path for a required UO data file or raise.
+
+        This is a convenience for callers that need a guaranteed file path
+        and prefer an explicit exception when the SDK cannot resolve it.
+        """
+        path = cls.get_file_path(file)
+        if path:
+            return path
+        raise FileAccessException(
+            f"Required Ultima Online data file not found: '{file}'. "
+            "Set Files.set_directory(path) or set the UO_ROOT/ULTIMA_ONLINE_DIR environment variable."
+        )
+
+    @classmethod
+    def require_files(cls, files: List[str]) -> Dict[str, str]:
+        """Require multiple files and return a mapping of filename -> absolute path.
+
+        Raises `FileAccessException` listing any missing files.
+        """
+        result: Dict[str, str] = {}
+        missing: List[str] = []
+        for f in files:
+            try:
+                result[f] = cls.require_file_path(f)
+            except FileAccessException:
+                missing.append(f)
+
+        if missing:
+            raise FileAccessException(f"Missing required files: {', '.join(missing)}")
+
+        return result
 
     @classmethod
     def add_file_save_callback(cls, callback: callable) -> None:
@@ -191,7 +265,7 @@ class Files:
             try:
                 callback()
             except Exception as e:
-                print(f"Error in file save callback: {e}")
+                warnings.warn(f"Error in file save callback: {e}")
 
     @staticmethod
     def _load_directory() -> Optional[str]:
@@ -210,10 +284,14 @@ class Files:
                                 return value
                             if value and os.path.isfile(value):
                                 return os.path.dirname(value)
-                        except Exception:
-                            pass
-            except Exception:
-                pass
+                        except OSError:
+                            # Key or value missing for this registry entry; try next
+                            continue
+                        except Exception as e:
+                            warnings.warn(f"Unexpected registry read error for {reg_key}/{path_key}: {e}")
+                            continue
+            except Exception as e:
+                warnings.warn(f"Registry access failed while detecting UO directory: {e}")
 
         # Try common paths
         common_paths = [

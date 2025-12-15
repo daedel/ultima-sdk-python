@@ -4,18 +4,32 @@ Custom exceptions for the Ultima SDK.
 
 
 class UltimaSdkException(Exception):
-    """Base exception for all Ultima SDK errors."""
-    pass
+    """Base exception for all Ultima SDK errors.
+
+    Accepts an optional `cause` keyword argument to chain underlying exceptions.
+    """
+
+    def __init__(self, message: str = "", *, cause: Exception | None = None, **kwargs) -> None:
+        super().__init__(message)
+        self.cause = cause
 
 
 class FileAccessException(UltimaSdkException):
     """Raised when a file cannot be accessed or read."""
-    pass
+
+    def __init__(self, message: str = "", *, file_path: str | None = None, **kwargs) -> None:
+        super().__init__(message, **kwargs)
+        self.file_path = file_path
 
 
 class InvalidFormatException(UltimaSdkException):
     """Raised when file format is invalid or corrupted."""
-    pass
+
+    def __init__(self, expected: str, actual: str, **kwargs) -> None:
+        msg = f"Expected {expected}, got {actual}"
+        super().__init__(msg, **kwargs)
+        self.expected = expected
+        self.actual = actual
 
 
 class ClientException(UltimaSdkException):

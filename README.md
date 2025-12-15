@@ -145,7 +145,7 @@ def ensure_uo_directory():
 
       # Set directory in SDK and export to environment
       Files.set_directory(user_dir)
-      os.environ["UO_DIR"] = user_dir
+      os.environ["UO_ROOT"] = user_dir
 
       # Re-run initialize in case SDK needs it
       try:
@@ -163,6 +163,20 @@ ensure_uo_directory()
 # Get file paths
 art_path = Files.get_file_path("art.mul")
 print("art.mul path:", art_path)
+```
+
+You can also require a path and get an explicit exception if it's missing:
+
+```python
+from ultima_sdk import Files
+from ultima_sdk.exceptions import FileAccessException
+
+try:
+  art_path = Files.require_file_path("art.mul")
+except FileAccessException as e:
+  print("Missing required file:", e)
+  # Prompt user or abort
+
 ```
 
 ### TileData

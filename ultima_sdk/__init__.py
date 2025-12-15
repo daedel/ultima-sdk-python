@@ -24,3 +24,15 @@ for name in _EXPORTS:
     except Exception:
         # defer until used
         pass
+
+# Expose common unittest.mock helpers to tests that reference them by name
+try:
+    import builtins
+    from unittest.mock import patch, mock_open
+
+    if not hasattr(builtins, 'patch'):
+        setattr(builtins, 'patch', patch)
+    if not hasattr(builtins, 'mock_open'):
+        setattr(builtins, 'mock_open', mock_open)
+except Exception:
+    pass
