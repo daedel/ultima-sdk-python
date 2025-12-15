@@ -35,7 +35,7 @@ class ArtData:
 class Art:
     """Static class for managing art data."""
 
-    _index: Optional[FileIndex] = None
+    _index: Optional[object] = None
     _initialized = False
 
     @classmethod
@@ -63,6 +63,20 @@ class Art:
 
             if idx_path and mul_path:
                 cls._index = FileIndex(idx_path, mul_path, file_id=VERDATA_IDS.ART_MUL)
+                cls._initialized = True
+                return True
+
+            # UOP fallback (newer clients).
+            uop_path = Files.get_file_path("artlegacymul.uop")
+            if uop_path:
+                from .uop import UopBackedIndex
+
+                cls._index = UopBackedIndex(
+                    uop_path,
+                    "build/artlegacymul/{0:D8}.tga",
+                    has_extra=False,
+                    file_id=VERDATA_IDS.ART_MUL,
+                )
                 cls._initialized = True
                 return True
         except Exception as e:

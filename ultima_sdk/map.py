@@ -60,16 +60,28 @@ class Map:
         cls._maps = {}
 
         # Load all map files
-        for i in range(6):
-            map_file = f"map{i}.mul"
-            path = Files.get_file_path(map_file)
-            if not path:
+        for i in range(11):
+            map_mul = Files.get_file_path(f"map{i}.mul")
+            if map_mul:
+                width, height = cls._infer_map_size(i, map_mul)
+                map_data = MapData(i)
+                map_data.tile_matrix = TileMatrix(map_id=i, width=width, height=height, map_path=map_mul)
+                cls._maps[i] = map_data
                 continue
 
-            width, height = cls._infer_map_size(i, path)
-            map_data = MapData(i)
-            map_data.tile_matrix = TileMatrix(map_id=i, width=width, height=height, map_path=path)
-            cls._maps[i] = map_data
+            map_uop = Files.get_file_path(f"map{i}legacymul.uop")
+            if map_uop:
+                width, height = cls._infer_map_size_from_uop(i, map_uop)
+                map_data = MapData(i)
+                map_data.tile_matrix = TileMatrix(
+                    map_id=i,
+                    width=width,
+                    height=height,
+                    map_path=None,
+                    map_uop_path=map_uop,
+                    map_uop_pattern=f"build/map{i}legacymul/{{0:D8}}.dat",
+                )
+                cls._maps[i] = map_data
 
     @classmethod
     def _infer_map_size(cls, map_id: int, path: str) -> Tuple[int, int]:
@@ -113,6 +125,60 @@ class Map:
                 best_bw, best_bh, best_diff = bw, bh, diff
 
         return (best_bw << 3, best_bh << 3)
+
+    @classmethod
+    def _infer_map_size_from_uop(cls, map_id: int, uop_path: str) -> Tuple[int, int]:
+        """Infer map dimensions from a UOP container.
+
+        We avoid decompressing full segments by using UOP entry metadata:
+        each entry holds N * 196-byte map blocks.
+        """
+        try:
+            from .uop import UopFile
+
+            u = UopFile(uop_path, f"build/map{map_id}legacymul/{{0:D8}}.dat")
+            u.parse()
+
+            blocks = 0
+            saw_any = False
+            for segment_id in range(0, 4096):
+                entry = u.get_entry(segment_id)
+                if entry is None:
+                    break
+                saw_any = True
+                length = entry.decompressed_length if entry.decompressed_length > 0 else entry.compressed_length
+                if length > 0:
+                    blocks += (length // 196)
+
+            if not saw_any or blocks <= 0:
+                return cls.DEFAULT_MAP_SIZES.get(map_id, (8, 8))
+
+            if blocks == 1:
+                return (8, 8)
+
+            default = cls.DEFAULT_MAP_SIZES.get(map_id)
+            if default:
+                w, h = default
+                expected_blocks = (w >> 3) * (h >> 3)
+                if expected_blocks > 0 and blocks >= expected_blocks:
+                    return default
+
+            # Best-effort: choose factor pair (bw,bh) with minimal difference.
+            best_bw = blocks
+            best_bh = 1
+            best_diff = blocks
+            limit = int(math.isqrt(blocks))
+            for bh in range(1, limit + 1):
+                if blocks % bh != 0:
+                    continue
+                bw = blocks // bh
+                diff = abs(bw - bh)
+                if diff < best_diff:
+                    best_bw, best_bh, best_diff = bw, bh, diff
+
+            return (best_bw << 3, best_bh << 3)
+        except Exception:
+            return cls.DEFAULT_MAP_SIZES.get(map_id, (8, 8))
 
     @classmethod
     def get_map(cls, map_id: int) -> Optional[MapData]:

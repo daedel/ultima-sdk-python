@@ -12,12 +12,40 @@ from functools import lru_cache
 class TileMatrix:
     """Represents a tile matrix for a map."""
 
-    def __init__(self, map_id: int, width: int, height: int, map_path: str | None = None):
+    def __init__(
+        self,
+        map_id: int,
+        width: int,
+        height: int,
+        map_path: str | None = None,
+        *,
+        map_uop_path: str | None = None,
+        map_uop_pattern: str | None = None,
+    ):
         self.map_id = map_id
         self.width = width
         self.height = height
         self.tiles: list = []
         self.map_path = map_path
+
+        self._uop = None
+        self._uop_pattern = map_uop_pattern
+        self._uop_segment_cache: dict[int, bytes] = {}
+
+        if map_uop_path and map_uop_pattern:
+            from .uop import UopFile
+
+            self._uop = UopFile(map_uop_path, map_uop_pattern)
+
+        # Verdata map patching is only standardized for map0 in this SDK mapping.
+        self._verdata_file_id: int | None = None
+        if map_id == 0:
+            try:
+                from .verdata_ids import IDS as VERDATA_IDS
+
+                self._verdata_file_id = VERDATA_IDS.MAP0_MUL
+            except Exception:
+                self._verdata_file_id = None
 
         self.block_width = width >> 3
         self.block_height = height >> 3
@@ -37,7 +65,10 @@ class TileMatrix:
         return None
 
     def _get_tile_from_map_file(self, x: int, y: int) -> Optional[Tuple[int, int]]:
-        if not self.map_path or not os.path.exists(self.map_path):
+        if not self.map_path and not self._uop:
+            return None
+
+        if self.map_path and not os.path.exists(self.map_path):
             return None
 
         bx = x >> 3
@@ -57,15 +88,48 @@ class TileMatrix:
         if cached is not None:
             return cached
 
-        # Map block ordering is column-major by x-block then y-block:
-        # offset = (((bx * BlockHeight) + by) * 196) + 4
+        # Map block ordering is column-major by x-block then y-block.
         block_index = (bx * self.block_height) + by
-        base = (block_index * 196) + 4
 
         block: list[tuple[int, int]] = [(0, 0)] * 64
-        with open(self.map_path, "rb") as f:
-            f.seek(base)
-            raw = f.read(64 * 3)
+
+        # Verdata override (map0 only per our mapping).
+        if self._verdata_file_id is not None:
+            try:
+                from .verdata import Verdata
+
+                patch = Verdata.read_patch(self._verdata_file_id, int(block_index))
+            except Exception:
+                patch = None
+
+            if patch is not None and len(patch) >= 196:
+                raw = patch[4:4 + (64 * 3)]
+            else:
+                raw = b""
+        else:
+            raw = b""
+
+        if not raw:
+            if self._uop is not None:
+                # UOP map files store map data in chunks (virtual files) addressed by:
+                # segment_id = block_index >> 12  (4096 blocks per chunk)
+                # within = block_index & 0x0FFF
+                segment_id = int(block_index >> 12)
+                within = int(block_index & 0x0FFF)
+                segment = self._uop_segment_cache.get(segment_id)
+                if segment is None:
+                    segment = self._uop.read_raw(segment_id) or b""
+                    self._uop_segment_cache[segment_id] = segment
+
+                base = (within * 196) + 4
+                end = base + (64 * 3)
+                raw = segment[base:end] if end <= len(segment) else b""
+            else:
+                base = (block_index * 196) + 4
+                with open(self.map_path, "rb") as f:
+                    f.seek(base)
+                    raw = f.read(64 * 3)
+
         if len(raw) != 64 * 3:
             self._land_block_cache[key] = block
             return block

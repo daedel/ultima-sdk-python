@@ -372,6 +372,20 @@ Pickled License - See LICENSE file for details
 
 Contributions welcome! Please follow PEP 8 style guidelines and add tests for new features.
 
+### Tests
+
+Run the full test suite:
+
+```bash
+pytest -q
+```
+
+Optional real-world UOP regression tests are marked as `slow` and are skipped unless explicitly enabled:
+
+```powershell
+$env:ULTIMA_SDK_REAL_UOP_TESTS="1"; pytest -q -m slow
+```
+
 ---
 
 ## Original C# SDK

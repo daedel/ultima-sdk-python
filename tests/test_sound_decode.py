@@ -62,3 +62,31 @@ def test_sound_get_sound_raises_on_non_wav(tmp_path):
 
     with pytest.raises(WaveFormatException):
         Sound.get_sound(0)
+
+
+def test_sound_get_sound_wraps_legacy_pcm_into_wav(tmp_path):
+    # Simulate an installed-client legacy sound payload:
+    # NUL-terminated filename prefix + (optional) small header + raw 16-bit PCM.
+    name = b"d_frst01.wav\x00"
+    legacy_header = b"\x00" * 32
+
+    # Build PCM samples with enough variation to look like audio.
+    samples = [((i * 97) % 2000) - 1000 for i in range(2048)]
+    pcm = struct.pack("<%dh" % len(samples), *samples)
+    raw = name + legacy_header + pcm
+
+    mul_path = tmp_path / "sound.mul"
+    mul_path.write_bytes(raw)
+
+    idx_path = tmp_path / "soundidx.mul"
+    idx_path.write_bytes(struct.pack("<iii", 0, len(raw), 0))
+
+    Sound._initialized = False
+    Sound._index = None
+    assert Sound.initialize(str(idx_path), str(mul_path)) is True
+
+    s = Sound.get_sound(0)
+    assert s is not None
+    assert s.data[:4] == b"RIFF"
+    assert s.data[8:12] == b"WAVE"
+    assert s.name == "d_frst01.wav"

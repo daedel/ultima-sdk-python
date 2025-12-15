@@ -6,7 +6,7 @@ Handles file discovery, path management, and file availability checking.
 import os
 import platform
 import warnings
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Callable
 from pathlib import Path
 from .exceptions import FileAccessException
 
@@ -65,6 +65,7 @@ class Files:
         r"EA Games\Ultima Online: Mondain's Legacy\1.0",
         r"Electronic Arts\EA Games\Ultima Online Stygian Abyss Classic",
         r"Electronic Arts\EA Games\Ultima Online Classic",
+        r"Electronic Arts\Ultima Online Classic",
     ]
 
     KNOWN_REG_PATH_KEYS = ["ExePath", "Install Dir", "InstallDir"]
@@ -74,7 +75,7 @@ class Files:
     _mul_path: Dict[str, str] = {}
     _root_dir: str = ""
     _cache_data: bool = True
-    _file_save_callbacks: List[callable] = []
+    _file_save_callbacks: List[Callable[[], None]] = []
 
     @classmethod
     def initialize(cls, root_dir: Optional[str] = None) -> bool:
@@ -82,10 +83,15 @@ class Files:
 
         Returns True if a valid UO directory was found and paths loaded,
         False otherwise. Detects environment variables `UO_ROOT` or
-        `ULTIMA_ONLINE_DIR` before checking platform registry/common paths.
+        `ULTIMA_ONLINE_DIR` (or `ULTIMA_SDK_UO_ROOT`) before checking platform
+        registry/common paths.
         """
         # Allow environment variable override
-        env_root = os.environ.get("UO_ROOT") or os.environ.get("ULTIMA_ONLINE_DIR")
+        env_root = (
+            os.environ.get("UO_ROOT")
+            or os.environ.get("ULTIMA_ONLINE_DIR")
+            or os.environ.get("ULTIMA_SDK_UO_ROOT")
+        )
         if root_dir is None and env_root:
             root_dir = env_root
 
@@ -247,13 +253,13 @@ class Files:
         return result
 
     @classmethod
-    def add_file_save_callback(cls, callback: callable) -> None:
+    def add_file_save_callback(cls, callback: Callable[[], None]) -> None:
         """Add a callback to be invoked when files are saved."""
         if callback not in cls._file_save_callbacks:
             cls._file_save_callbacks.append(callback)
 
     @classmethod
-    def remove_file_save_callback(cls, callback: callable) -> None:
+    def remove_file_save_callback(cls, callback: Callable[[], None]) -> None:
         """Remove a file save callback."""
         if callback in cls._file_save_callbacks:
             cls._file_save_callbacks.remove(callback)
@@ -273,35 +279,70 @@ class Files:
         if platform.system() == "Windows":
             try:
                 import winreg
-                for reg_key in Files.KNOWN_REG_KEYS:
-                    for path_key in Files.KNOWN_REG_PATH_KEYS:
-                        try:
-                            key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, f"SOFTWARE\\{reg_key}")
-                            value, _ = winreg.QueryValueEx(key, path_key)
-                            winreg.CloseKey(key)
 
-                            if value and os.path.isdir(value):
-                                return value
-                            if value and os.path.isfile(value):
-                                return os.path.dirname(value)
-                        except OSError:
-                            # Key or value missing for this registry entry; try next
-                            continue
-                        except Exception as e:
-                            warnings.warn(f"Unexpected registry read error for {reg_key}/{path_key}: {e}")
-                            continue
+                def _normalize_registry_path(v: object) -> str:
+                    s = str(v).strip().strip('"')
+                    s = os.path.expandvars(s)
+                    return s
+
+                access_flags = [winreg.KEY_READ]
+                # On 64-bit Windows, UO entries are often under the 32-bit view.
+                for view_flag in (getattr(winreg, "KEY_WOW64_32KEY", 0), getattr(winreg, "KEY_WOW64_64KEY", 0)):
+                    if view_flag:
+                        access_flags.append(winreg.KEY_READ | view_flag)
+
+                hives = [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]
+                prefixes = ["SOFTWARE\\", "SOFTWARE\\WOW6432Node\\"]
+
+                for hive in hives:
+                    for prefix in prefixes:
+                        for reg_key in Files.KNOWN_REG_KEYS:
+                            reg_path = f"{prefix}{reg_key}"
+                            for path_key in Files.KNOWN_REG_PATH_KEYS:
+                                for flags in access_flags:
+                                    try:
+                                        key = winreg.OpenKey(hive, reg_path, 0, flags)
+                                        value, _ = winreg.QueryValueEx(key, path_key)
+                                        winreg.CloseKey(key)
+
+                                        value = _normalize_registry_path(value)
+                                        if value and os.path.isdir(value):
+                                            return value
+                                        if value and os.path.isfile(value):
+                                            return os.path.dirname(value)
+                                    except OSError:
+                                        continue
+                                    except Exception as e:
+                                        warnings.warn(
+                                            f"Unexpected registry read error for {reg_path}/{path_key}: {e}"
+                                        )
+                                        continue
             except Exception as e:
                 warnings.warn(f"Registry access failed while detecting UO directory: {e}")
 
         # Try common paths
+        pf = os.environ.get("Program Files")
+        pfx86 = os.environ.get("Program Files (x86)")
         common_paths = [
             Path.home() / "Documents" / "Ultima Online",
             Path.home() / "Games" / "Ultima Online",
             Path("/opt/ultimaonline"),
-            Path("C:/Program Files/Ultima Online"),
-            Path("C:/Program Files (x86)/Ultima Online"),
             Path("C:/Ultima Online"),
         ]
+
+        # Windows install fallbacks (cover common EA/Origin variants)
+        for base in [pfx86, pf, "C:/Program Files (x86)", "C:/Program Files"]:
+            if not base:
+                continue
+            common_paths.extend(
+                [
+                    Path(base) / "Ultima Online",
+                    Path(base) / "Ultima Online Classic",
+                    Path(base) / "EA Games" / "Ultima Online Classic",
+                    Path(base) / "Electronic Arts" / "EA Games" / "Ultima Online Classic",
+                    Path(base) / "Origin Games" / "Ultima Online",
+                ]
+            )
 
         for path in common_paths:
             if path.exists():

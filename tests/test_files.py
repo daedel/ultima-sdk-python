@@ -1,7 +1,7 @@
 import os
 import tempfile
 import pytest
-from ultima_sdk import Files
+from ultima_sdk.files import Files
 from ultima_sdk.exceptions import FileAccessException
 
 

@@ -33,7 +33,7 @@ class GumpData:
 class Gumps:
     """Static class for managing gump data."""
 
-    _index: Optional[FileIndex] = None
+    _index: Optional[object] = None
     _initialized = False
 
     @classmethod
@@ -48,11 +48,26 @@ class Gumps:
             if mul_path is None:
                 mul_path = Files.get_file_path("gumpart.mul")
 
+            from .verdata_ids import IDS as VERDATA_IDS
+
             if idx_path and mul_path:
                 from .file_index import FileIndex
-                from .verdata_ids import IDS as VERDATA_IDS
 
                 cls._index = FileIndex(idx_path, mul_path, file_id=VERDATA_IDS.GUMPART_MUL)
+                cls._initialized = True
+                return True
+
+            # UOP fallback (newer clients).
+            uop_path = Files.get_file_path("gumpartlegacymul.uop")
+            if uop_path:
+                from .uop import UopBackedIndex
+
+                cls._index = UopBackedIndex(
+                    uop_path,
+                    "build/gumpartlegacymul/{0:D8}.tga",
+                    has_extra=True,
+                    file_id=VERDATA_IDS.GUMPART_MUL,
+                )
                 cls._initialized = True
                 return True
         except Exception as e:

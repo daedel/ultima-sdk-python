@@ -1,7 +1,8 @@
 {
 	"folders": [
 		{
-			"path": "."
+			"path": ".",
+			"UO_ROOT": "C:\\Program Files (x86)\\Electronic Arts\\Ultima Online Classic"
 		}
 	],
 	"settings": {

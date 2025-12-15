@@ -132,6 +132,12 @@ dmypy.json
 *.swo
 *~
 
+# Local outputs
+out/
+
 # OS
 .DS_Store
 Thumbs.db
+
+#UOP ClientFiles
+*.uop
