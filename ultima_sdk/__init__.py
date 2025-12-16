@@ -14,17 +14,19 @@ _EXPORTS = [
     'EquipConv'
 ]
 
-__all__ = []
+_exported: list[str] = []
 
 for name in _EXPORTS:
     try:
         module = __import__(f"ultima_sdk.{name.lower()}", fromlist=[name])
         obj = getattr(module, name)
         globals()[name] = obj
-        __all__.append(name)
+        _exported.append(name)
     except Exception:
         # defer until used
         pass
+
+__all__ = _exported  # pyright: ignore[reportUnsupportedDunderAll]
 
 # Expose common unittest.mock helpers to tests that reference them by name
 try:

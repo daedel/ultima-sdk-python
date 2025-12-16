@@ -9,7 +9,7 @@ Run:
 from __future__ import annotations
 
 import ultima_sdk
-from ultima_sdk import Files
+from ultima_sdk.files import Files
 
 
 def main() -> int:

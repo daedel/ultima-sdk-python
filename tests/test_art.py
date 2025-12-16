@@ -3,6 +3,7 @@
 import pytest
 from io import BytesIO
 from PIL import Image
+from unittest.mock import patch, mock_open
 from ultima_sdk.art import ArtLoader, ArtTile
 from ultima_sdk.exceptions import FileParseError
 

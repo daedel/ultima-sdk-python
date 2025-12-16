@@ -142,7 +142,8 @@ class Client:
             try:
                 if platform.system() == "Windows":
                     import ctypes
-                    ctypes.windll.user32.SetForegroundWindow(cls._handle.handle)
+                    handle = cls.get_handle()
+                    ctypes.windll.user32.SetForegroundWindow(handle.handle)
                 return True
             except Exception as e:
                 warnings.warn(f"bring_to_top failed: {e}")
@@ -155,16 +156,17 @@ class Client:
             try:
                 if platform.system() == "Windows":
                     import ctypes
+                    handle = cls.get_handle()
                     for char in text:
-                        ctypes.windll.user32.PostMessageW(cls._handle.handle, 0x102, ord(char), 0)
-                    ctypes.windll.user32.PostMessageW(cls._handle.handle, 0x100, 0x0D, 0)
+                        ctypes.windll.user32.PostMessageW(handle.handle, 0x102, ord(char), 0)
+                    ctypes.windll.user32.PostMessageW(handle.handle, 0x100, 0x0D, 0)
                 return True
             except Exception as e:
                 warnings.warn(f"send_text failed: {e}")
         return False
 
     @classmethod
-    def calibrate(cls, x: int = None, y: int = None, z: int = None) -> bool:
+    def calibrate(cls, x: int | None = None, y: int | None = None, z: int | None = None) -> bool:
         """Calibrate client location pointer."""
         cls._location_pointer = None
 

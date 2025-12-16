@@ -2,9 +2,8 @@
 Sound module - Manages sound and music data.
 """
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Protocol, runtime_checkable
 import struct
-from .file_index import FileIndex
 from .files import Files
 from .exceptions import FileAccessException, WaveFormatException
 
@@ -21,7 +20,12 @@ class SoundData:
 class Sound:
     """Static class for managing sound data."""
 
-    _index: Optional[object] = None
+    @runtime_checkable
+    class _IndexLike(Protocol):
+        def read_raw(self, index: int) -> Optional[bytes]:  # pragma: no cover
+            ...
+
+    _index: Optional[_IndexLike] = None
     _initialized = False
 
     @classmethod

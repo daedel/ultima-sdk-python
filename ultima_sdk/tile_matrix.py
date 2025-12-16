@@ -126,9 +126,13 @@ class TileMatrix:
                 raw = segment[base:end] if end <= len(segment) else b""
             else:
                 base = (block_index * 196) + 4
-                with open(self.map_path, "rb") as f:
-                    f.seek(base)
-                    raw = f.read(64 * 3)
+                map_path = self.map_path
+                if map_path is None:
+                    raw = b""
+                else:
+                    with open(map_path, "rb") as f:
+                        f.seek(base)
+                        raw = f.read(64 * 3)
 
         if len(raw) != 64 * 3:
             self._land_block_cache[key] = block

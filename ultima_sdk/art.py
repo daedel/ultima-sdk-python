@@ -1,5 +1,6 @@
-"""
-Art module - Manages static item art data.
+"""ultima_sdk.art
+
+Manages static item art data.
 """
 
 from typing import Optional, Tuple
@@ -9,10 +10,21 @@ from .files import Files
 from .exceptions import FileAccessException
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Protocol, runtime_checkable
 import struct
 from .exceptions import FileParseError
 from .rendering import image_from_pixels
+
+
+@runtime_checkable
+class _ArtIndexLike(Protocol):
+    """Structural type for index backends used by :class:`Art`.
+
+    Both ``FileIndex`` and UOP-backed indexes provide a ``read_raw`` method.
+    """
+
+    def read_raw(self, index: int) -> Optional[bytes]:  # pragma: no cover
+        ...
 
 
 class ArtData:
@@ -35,7 +47,7 @@ class ArtData:
 class Art:
     """Static class for managing art data."""
 
-    _index: Optional[object] = None
+    _index: Optional[_ArtIndexLike] = None
     _initialized = False
 
     @classmethod

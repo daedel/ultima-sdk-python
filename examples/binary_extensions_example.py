@@ -14,7 +14,7 @@ def main() -> int:
     w.write_uint16(0xBEEF)
     w.write_int32(-123)
     w.write_string("hello", null_terminated=True)
-    data = w.stream.getvalue()  # BytesIO
+    data = w.get_buffer() or b""
 
     r = BinaryReader(data)
     a = r.read_uint16()

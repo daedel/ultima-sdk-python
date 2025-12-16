@@ -3,8 +3,7 @@ Gumps module - Manages UI gump (interface) graphics.
 """
 
 from pathlib import Path
-from typing import Optional
-from .file_index import FileIndex
+from typing import Optional, Protocol, runtime_checkable
 from .files import Files
 from .exceptions import FileAccessException
 
@@ -33,7 +32,12 @@ class GumpData:
 class Gumps:
     """Static class for managing gump data."""
 
-    _index: Optional[object] = None
+    @runtime_checkable
+    class _IndexLike(Protocol):
+        def read_raw(self, index: int) -> Optional[bytes]:  # pragma: no cover
+            ...
+
+    _index: Optional[_IndexLike] = None
     _initialized = False
 
     @classmethod
@@ -189,5 +193,3 @@ class Gumps:
             raise ValueError("Unsupported gump data format")
 
         return width, height, pixels
-
-        return None

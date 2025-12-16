@@ -11,32 +11,32 @@ import warnings
 
 
 @dataclass
-class FileIndexEntry:
-    """Representation of a file index entry used by tests.
+class IndexEntry:
+    """Internal index entry used by FileIndex.
 
-    Fields: offset (int), length (int), extra (int).
-    Validates non-negative values.
+    Note: Disk-backed index formats commonly use signed int32 values where -1
+    indicates a missing entry. This class intentionally does not validate.
     """
+
     offset: int
     length: int
     extra: int = 0
 
-    def __post_init__(self) -> None:
-        if self.offset < 0 or self.length < 0:
-            raise ValueError("offset and length must be non-negative")
-
-
-class IndexEntry:
-    """Internal index entry used by FileIndex when loading from disk."""
-
-    def __init__(self, offset: int, length: int, extra: int = 0):
-        self.offset = offset
-        self.length = length
-        self.extra = extra
-
     @property
     def size(self) -> int:
         return self.length
+
+
+@dataclass
+class FileIndexEntry(IndexEntry):
+    """Representation of a file index entry used by tests.
+
+    Validates non-negative values.
+    """
+
+    def __post_init__(self) -> None:
+        if self.offset < 0 or self.length < 0:
+            raise ValueError("offset and length must be non-negative")
 
 
 class FileIndex:
@@ -61,8 +61,11 @@ class FileIndex:
 
     def _load_index(self) -> None:
         """Load index from `self.idx_path` on disk."""
+        idx_path = self.idx_path
+        if idx_path is None:
+            raise FileParseError("Index file path is not set", file_path=idx_path)
         try:
-            with open(self.idx_path, 'rb') as f:
+            with open(idx_path, 'rb') as f:
                 reader = BinaryReader(f)
                 while True:
                     try:
