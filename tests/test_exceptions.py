@@ -1,6 +1,6 @@
 """Tests for exceptions module."""
 
-import pytest
+# import pytest
 from ultima_sdk.exceptions import UltimaSDKError, FileParseError, InvalidFileFormatError
 
 
