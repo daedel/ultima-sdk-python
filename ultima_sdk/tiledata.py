@@ -7,7 +7,7 @@ import struct
 from typing import List, Optional, Dict
 from .binary_extensions import BinaryReader
 from .files import Files
-from .exceptions import FileAccessException, InvalidFormatException
+from .exceptions import FileAccessException
 
 
 class TileFlag:

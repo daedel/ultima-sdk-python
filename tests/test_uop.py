@@ -3,7 +3,6 @@ from __future__ import annotations
 import struct
 import zlib
 
-import pytest
 
 from ultima_sdk.uop import UopBackedIndex, UopFile, create_hash
 

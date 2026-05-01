@@ -7,7 +7,6 @@ from typing import List, Optional
 from .binary_extensions import BinaryReader
 from .exceptions import FileParseError
 from io import BytesIO
-import warnings
 
 
 @dataclass
@@ -63,14 +62,15 @@ class FileIndex:
         """Load index from `self.idx_path` on disk."""
         idx_path = self.idx_path
         if idx_path is None:
-            raise FileParseError("Index file path is not set", file_path=idx_path)
+            raise FileParseError("Index file path is not set",
+                                 file_path=idx_path)
         try:
             with open(idx_path, 'rb') as f:
                 reader = BinaryReader(f)
                 while True:
                     try:
-                        # Many MUL idx formats store signed int32 values where -1
-                        # indicates a missing entry.
+                        # Many MUL idx formats store signed int32 values
+                        # where -1 indicates a missing entry.
                         offset = reader.read_int32()
                         length = reader.read_int32()
                         extra = reader.read_int32()
@@ -78,7 +78,8 @@ class FileIndex:
                     except EOFError:
                         break
         except FileNotFoundError:
-            raise FileParseError("Index file not found", file_path=self.idx_path)
+            raise FileParseError("Index file not found",
+                                 file_path=self.idx_path)
 
     def load_from_bytes(self, data: bytes) -> None:
         """Load index entries from a bytes buffer.
@@ -97,7 +98,9 @@ class FileIndex:
                     offset = reader.read_uint32()
                     length = reader.read_uint32()
                     extra = reader.read_uint32()
-                    self.entries.append(FileIndexEntry(offset=offset, length=length, extra=extra))
+                    entry = FileIndexEntry(offset=offset, length=length,
+                                           extra=extra)
+                    self.entries.append(entry)
                 except EOFError:
                     break
         except EOFError:
@@ -156,3 +159,8 @@ class FileIndex:
     # Backward compatible alias
     def read_entry(self, index: int) -> Optional[bytes]:
         return self.read_raw(index)
+
+    @property
+    def entry_count(self) -> int:
+        """Get the number of entries in the index."""
+        return len(self.entries)

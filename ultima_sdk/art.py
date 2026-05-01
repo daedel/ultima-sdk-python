@@ -3,14 +3,11 @@
 Manages static item art data.
 """
 
-from typing import Optional, Tuple
-from .binary_extensions import BinaryReader
-from .file_index import FileIndex
+from typing import Optional
 from .files import Files
 from .exceptions import FileAccessException
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional, Protocol, runtime_checkable
+from typing import Dict, Protocol, runtime_checkable
 import struct
 from .exceptions import FileParseError
 from .rendering import image_from_pixels

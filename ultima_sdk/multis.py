@@ -5,7 +5,6 @@ Supports full read AND write (add/remove components + save to multi.mul/idx).
 
 from typing import Optional, List, Dict
 import struct
-import os
 
 from .file_index import FileIndex
 from .files import Files
@@ -233,7 +232,7 @@ class Multis:
         if not cls._index:
             raise FileAccessException("Multi index not loaded")
 
-        total = cls._index.entry_count()
+        total = cls._index.entry_count
 
         mul_buf = bytearray()
         idx_entries: List[tuple[int, int, int]] = []

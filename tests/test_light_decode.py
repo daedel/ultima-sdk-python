@@ -27,12 +27,12 @@ def test_light_get_light_reads_idx_mul_uo16_square(tmp_path):
     Light._lights = []
     assert Light.initialize(str(idx_path), str(mul_path)) is True
 
-    l = Light.get_light(0)
-    assert l is not None
-    assert (l.width, l.height) == (width, height)
-    assert len(l.pixels) == width * height * 2
+    light = Light.get_light(0)
+    assert light is not None
+    assert (light.width, light.height) == (width, height)
+    assert len(light.pixels) == width * height * 2
 
-    img = l.to_image()
+    img = light.to_image()
     assert img.size == (width, height)
 
 
@@ -53,10 +53,10 @@ def test_light_get_light_reads_idx_mul_intensity_square(tmp_path):
     Light._lights = []
     assert Light.initialize(str(idx_path), str(mul_path)) is True
 
-    l = Light.get_light(0)
-    assert l is not None
-    assert (l.width, l.height) == (width, height)
-    assert len(l.pixels) == width * height
+    light = Light.get_light(0)
+    assert light is not None
+    assert (light.width, light.height) == (width, height)
+    assert len(light.pixels) == width * height
 
-    img = l.to_image()
+    img = light.to_image()
     assert img.size == (width, height)

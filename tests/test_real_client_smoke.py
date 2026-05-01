@@ -140,16 +140,16 @@ def test_smoke_light_can_decode_one_entry():
 
     for light_id in (0, 1, 2, 10, 100):
         try:
-            l = Light.get_light(light_id)
+            light = Light.get_light(light_id)
         except Exception:
             continue
-        if l is None:
+        if light is None:
             continue
-        assert l.width > 0 and l.height > 0
+        assert light.width > 0 and light.height > 0
         # Either 8-bit intensity or 16-bit pixels.
-        assert len(l.pixels) in (l.width * l.height, l.width * l.height * 2)
-        img = l.to_image()
-        assert img.size == (l.width, l.height)
+        assert len(light.pixels) in (light.width * light.height, light.width * light.height * 2)
+        img = light.to_image()
+        assert img.size == (light.width, light.height)
         return
 
     pytest.skip("No decodable light entries found in first few ids")
