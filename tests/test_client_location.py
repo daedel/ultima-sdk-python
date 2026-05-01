@@ -3,7 +3,7 @@
 These tests are fully mocked; they do not require a running UO client.
 """
 
-import os
+# import os
 import struct
 from types import SimpleNamespace
 from unittest.mock import patch
