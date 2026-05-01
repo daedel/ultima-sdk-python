@@ -19,15 +19,10 @@ class MapData:
         self.tile_matrix: Optional[TileMatrix] = None
 
     def get_tile(self, x: int, y: int) -> Optional[Tuple[int, int]]:
-    """Get tile ID and altitude at coordinates."""
-    if 0 <= x < self.width and 0 <= y < self.height:
-        if self.map_path or self._uop is not None:
-            return self._get_tile_from_map_file(x, y)
-
-        idx = y * self.width + x
-        if idx < len(self.tiles):
-            return self.tiles[idx]
-    return None
+        """Get tile ID and altitude at coordinates."""
+        if self.tile_matrix:
+            return self.tile_matrix.get_tile(x, y)
+        return None
 
 
 class Map:
