@@ -9,8 +9,14 @@ import argparse
 from pathlib import Path
 
 from ultima_sdk.light import Light
-
-from ._common import add_out_arg, add_uo_root_arg, ensure_out_dir, init_files, resolve_uo_root, save_uo16_image
+from ._common import (
+    add_out_arg,
+    add_uo_root_arg,
+    ensure_out_dir,
+    init_files,
+    resolve_uo_root,
+    save_uo16_image,
+)
 
 
 def main() -> int:
@@ -24,15 +30,18 @@ def main() -> int:
     out_dir = ensure_out_dir(args.out)
 
     Light.initialize()
+
     candidates = [int(args.id)] + list(range(0, 128))
+
     for light_id in candidates:
         try:
-            l = Light.get_light(light_id)
-            if l is None:
+            light = Light.get_light(light_id)
+            if light is None:
                 continue
+
             out_path = Path(out_dir) / f"light_{light_id:04d}.png"
-            saved = save_uo16_image(l.width, l.height, l.pixels, out_path)
-            print(f"Decoded light {light_id} -> {saved} ({l.width}x{l.height})")
+            saved = save_uo16_image(light.width, light.height, light.pixels, out_path)
+            print(f"Decoded light {light_id} -> {saved} ({light.width}x{light.height})")
             return 0
         except Exception:
             continue
