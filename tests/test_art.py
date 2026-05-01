@@ -1,7 +1,7 @@
 """Tests for art module."""
 
 import pytest
-from io import BytesIO
+# from io import BytesIO
 from PIL import Image
 from unittest.mock import patch, mock_open
 from ultima_sdk.art import ArtLoader, ArtTile
