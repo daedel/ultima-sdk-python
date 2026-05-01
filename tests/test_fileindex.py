@@ -1,7 +1,7 @@
 """Tests for file_index module."""
 
 import pytest
-from pathlib import Path
+# from pathlib import Path
 from ultima_sdk.file_index import FileIndex, FileIndexEntry
 from ultima_sdk.exceptions import FileParseError
 
