@@ -56,7 +56,7 @@ class TileMatrix:
     def get_tile(self, x: int, y: int) -> Optional[Tuple[int, int]]:
         """Get tile ID and altitude at coordinates."""
         if 0 <= x < self.width and 0 <= y < self.height:
-            if self.map_path:
+            if self.map_path or self._uop is not None:
                 return self._get_tile_from_map_file(x, y)
 
             idx = y * self.width + x
