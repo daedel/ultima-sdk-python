@@ -30,13 +30,20 @@ class _WinApi:
 
         # Signature setup (best-effort; some environments don't need this)
         try:
-            self.user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+            self.user32.GetWindowThreadProcessId.argtypes = [
+                wintypes.HWND,
+                ctypes.POINTER(wintypes.DWORD),
+            ]
             self.user32.GetWindowThreadProcessId.restype = wintypes.DWORD
         except Exception:
             pass
 
         try:
-            self.kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+            self.kernel32.OpenProcess.argtypes = [
+                wintypes.DWORD,
+                wintypes.BOOL,
+                wintypes.DWORD,
+            ]
             self.kernel32.OpenProcess.restype = wintypes.HANDLE
         except Exception:
             pass
@@ -142,6 +149,7 @@ class Client:
             try:
                 if platform.system() == "Windows":
                     import ctypes
+
                     handle = cls.get_handle()
                     ctypes.windll.user32.SetForegroundWindow(handle.handle)
                 return True
@@ -156,9 +164,12 @@ class Client:
             try:
                 if platform.system() == "Windows":
                     import ctypes
+
                     handle = cls.get_handle()
                     for char in text:
-                        ctypes.windll.user32.PostMessageW(handle.handle, 0x102, ord(char), 0)
+                        ctypes.windll.user32.PostMessageW(
+                            handle.handle, 0x102, ord(char), 0
+                        )
                     ctypes.windll.user32.PostMessageW(handle.handle, 0x100, 0x0D, 0)
                 return True
             except Exception as e:
@@ -166,7 +177,9 @@ class Client:
         return False
 
     @classmethod
-    def calibrate(cls, x: int | None = None, y: int | None = None, z: int | None = None) -> bool:
+    def calibrate(
+        cls, x: int | None = None, y: int | None = None, z: int | None = None
+    ) -> bool:
         """Calibrate client location pointer."""
         cls._location_pointer = None
 
@@ -236,12 +249,16 @@ class Client:
             raise ClientException("Unable to open client process")
 
         try:
-            return cls._read_location_from_process(winapi, proc, int(cls._location_pointer))
+            return cls._read_location_from_process(
+                winapi, proc, int(cls._location_pointer)
+            )
         finally:
             winapi.close_handle(proc)
 
     @classmethod
-    def _read_location_from_process(cls, winapi: _WinApi, process_handle, pointer: int) -> Optional[Tuple[int, int, int, int]]:
+    def _read_location_from_process(
+        cls, winapi: _WinApi, process_handle, pointer: int
+    ) -> Optional[Tuple[int, int, int, int]]:
         """Read (x,y,z,map) from a pointer address.
 
         Layout is treated as 4 little-endian int32 values at offsets 0,4,8,12.
@@ -265,8 +282,14 @@ class Client:
         try:
             if platform.system() == "Windows":
                 import ctypes
+
                 # Try common window titles
-                for title in ["SDL_app", "Ultima Online", "Ultima Online Third Dawn", "OgreGLWindow"]:
+                for title in [
+                    "SDL_app",
+                    "Ultima Online",
+                    "Ultima Online Third Dawn",
+                    "OgreGLWindow",
+                ]:
                     handle = ctypes.windll.user32.FindWindowW(title, None)
                     if handle:
                         return ClientWindowHandle(handle)
@@ -278,6 +301,7 @@ class Client:
 
 class UltimaClient:
     """Minimal UltimaClient stub used by tests."""
+
     def __init__(self, client_path: Path | str) -> None:
         """Initialize client with a path.
 
@@ -301,7 +325,7 @@ class UltimaClient:
         """
         idx_path = self.client_path / filename
         try:
-            with open(idx_path, 'rb') as f:
+            with open(idx_path, "rb") as f:
                 data = f.read()
         except Exception as e:
             raise FileNotFoundError(f"Unable to open index file: {idx_path}") from e

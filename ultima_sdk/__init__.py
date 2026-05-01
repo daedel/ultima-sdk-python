@@ -3,15 +3,33 @@
 Expose common classes at package level for convenience.
 Light/guarded imports keep import-time cost low.
 """
+
 __version__ = "1.0.0"
 __author__ = "UltimaWorks"
 
 # Eagerly expose common high-level classes if available; keep failures silent
 _EXPORTS = [
-    'Files', 'TileData', 'Hues', 'Art', 'Animations', 'Gumps', 'Sound', 'Light',
-    'Textures', 'Multis', 'Map', 'Skills', 'AnimationEdit', 'StringList',
-    'RadarCol', 'SkillGroups', 'FileIndex', 'TileMatrix', 'BinaryReader', 'Verdata',
-    'EquipConv'
+    "Files",
+    "TileData",
+    "Hues",
+    "Art",
+    "Animations",
+    "Gumps",
+    "Sound",
+    "Light",
+    "Textures",
+    "Multis",
+    "Map",
+    "Skills",
+    "AnimationEdit",
+    "StringList",
+    "RadarCol",
+    "SkillGroups",
+    "FileIndex",
+    "TileMatrix",
+    "BinaryReader",
+    "Verdata",
+    "EquipConv",
 ]
 
 _exported: list[str] = []
@@ -33,9 +51,9 @@ try:
     import builtins
     from unittest.mock import patch, mock_open
 
-    if not hasattr(builtins, 'patch'):
-        setattr(builtins, 'patch', patch)
-    if not hasattr(builtins, 'mock_open'):
-        setattr(builtins, 'mock_open', mock_open)
+    if not hasattr(builtins, "patch"):
+        setattr(builtins, "patch", patch)
+    if not hasattr(builtins, "mock_open"):
+        setattr(builtins, "mock_open", mock_open)
 except Exception:
     pass

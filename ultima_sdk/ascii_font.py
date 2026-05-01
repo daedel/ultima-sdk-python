@@ -5,6 +5,7 @@ Pillow RGBA images.  Ported from NerdyGamers/UOPython with adaptations
 to match UltimaWorks SDK conventions (Files lookup, BinaryReader,
 no auto-execute on import).
 """
+
 from __future__ import annotations
 
 from typing import IO
@@ -63,7 +64,9 @@ class AsciiFont:
                     if char_offset < 96:
                         font.height = max(font.height, height)
 
-                    img = Image.new("RGBA", (max(width, 1), max(height, 1)), (0, 0, 0, 0))
+                    img = Image.new(
+                        "RGBA", (max(width, 1), max(height, 1)), (0, 0, 0, 0)
+                    )
                     if width > 0 and height > 0:
                         pos = f.tell()
                         stride = 2 * width

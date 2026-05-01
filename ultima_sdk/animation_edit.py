@@ -2,7 +2,6 @@
 AnimationEdit module - Utilities for editing animations.
 """
 
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -22,7 +21,9 @@ class AnimationEdit:
 
         Frames are decoded as 16-bit UO 5-5-5 pixel buffers.
         """
-        return image_from_pixels(frame.width, frame.height, frame.pixels, format_hint="UO16")
+        return image_from_pixels(
+            frame.width, frame.height, frame.pixels, format_hint="UO16"
+        )
 
     @classmethod
     def animation_to_images(cls, animation: AnimationData) -> List:

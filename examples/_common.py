@@ -14,7 +14,6 @@ from typing import Iterable
 
 from ultima_sdk.files import Files
 
-
 UO_ROOT_ENV_VARS: tuple[str, ...] = (
     "ULTIMA_ONLINE_DIR",
     "UO_ROOT",
@@ -48,7 +47,9 @@ def resolve_uo_root(cli_value: str | None) -> str | None:
     return None
 
 
-def init_files(uo_root: str | None, *, require: bool = True, require_any: Iterable[str] = ()) -> str | None:
+def init_files(
+    uo_root: str | None, *, require: bool = True, require_any: Iterable[str] = ()
+) -> str | None:
     """Initialize Files and optionally require a usable client directory."""
     if uo_root:
         Files.set_directory(uo_root)
@@ -82,7 +83,7 @@ def init_files(uo_root: str | None, *, require: bool = True, require_any: Iterab
         "This example needs a UO client directory.\n\n"
         "Set env var UO_ROOT (or ULTIMA_ONLINE_DIR), or pass --uo-root.\n"
         "Example (PowerShell):\n"
-        "  $env:UO_ROOT=\"F:\\Program Files (x86)\\Electronic Arts\\Ultima Online Classic\"\n"
+        '  $env:UO_ROOT="F:\\Program Files (x86)\\Electronic Arts\\Ultima Online Classic"\n'
         "  python -m examples.files_example\n"
     )
     raise SystemExit(hint)
@@ -124,7 +125,9 @@ def write_ppm_rgb(path: str | Path, width: int, height: int, rgb_bytes: bytes) -
     return p
 
 
-def save_uo16_image(width: int, height: int, pixels_uo16: bytes, out_path: str | Path) -> Path:
+def save_uo16_image(
+    width: int, height: int, pixels_uo16: bytes, out_path: str | Path
+) -> Path:
     """Save a UO16 buffer as PNG (if Pillow available) else as PPM.
 
     Args:
@@ -135,11 +138,12 @@ def save_uo16_image(width: int, height: int, pixels_uo16: bytes, out_path: str |
     try:
         from ultima_sdk.rendering import image_from_pixels
 
-        img = image_from_pixels(int(width), int(height), pixels_uo16, format_hint="UO16")
+        img = image_from_pixels(
+            int(width), int(height), pixels_uo16, format_hint="UO16"
+        )
         img.save(str(out_path), format="PNG")
         return out_path
     except ImportError:
         ppm = out_path.with_suffix(".ppm")
         rgb = _uo16_to_rgb_bytes(pixels_uo16)
         return write_ppm_rgb(ppm, int(width), int(height), rgb)
-

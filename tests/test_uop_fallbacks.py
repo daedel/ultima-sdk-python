@@ -8,7 +8,9 @@ from ultima_sdk.sound import Sound
 from ultima_sdk.uop import create_hash
 
 
-def _build_uop_single_entry(*, pattern: str, entry_id: int, payload: bytes, has_extra: bool = False) -> bytes:
+def _build_uop_single_entry(
+    *, pattern: str, entry_id: int, payload: bytes, has_extra: bool = False
+) -> bytes:
     header_size = 28
     block_offset = header_size
 

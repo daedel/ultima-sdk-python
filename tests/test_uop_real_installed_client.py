@@ -21,11 +21,15 @@ def _get_installed_uo_root() -> str | None:
 
 def _require_real_installed_client() -> str:
     if os.getenv("ULTIMA_SDK_REAL_UOP_TESTS") != "1":
-        pytest.skip("Set ULTIMA_SDK_REAL_UOP_TESTS=1 to enable real installed-client tests")
+        pytest.skip(
+            "Set ULTIMA_SDK_REAL_UOP_TESTS=1 to enable real installed-client tests"
+        )
 
     root = _get_installed_uo_root()
     if not root:
-        pytest.skip("Set UO_ROOT (or ULTIMA_ONLINE_DIR) to your installed client directory")
+        pytest.skip(
+            "Set UO_ROOT (or ULTIMA_ONLINE_DIR) to your installed client directory"
+        )
 
     if not os.path.isdir(root):
         pytest.skip("UO_ROOT directory does not exist")
@@ -54,7 +58,9 @@ def test_installed_art_legacy_uop_static_art_decodes():
         except Exception:
             continue
 
-    assert decoded, "Could not decode any static art in 0x4000..0x401F from installed client"
+    assert (
+        decoded
+    ), "Could not decode any static art in 0x4000..0x401F from installed client"
 
 
 @pytest.mark.slow

@@ -5,7 +5,9 @@ from ultima_sdk.map import Map
 from ultima_sdk.uop import create_hash
 
 
-def _build_single_block_map(tile_overrides: dict[tuple[int, int], tuple[int, int]]) -> bytes:
+def _build_single_block_map(
+    tile_overrides: dict[tuple[int, int], tuple[int, int]],
+) -> bytes:
     # One 8x8 block => 196 bytes
     out = bytearray(struct.pack("<i", 0))  # block header
     for y in range(8):

@@ -18,7 +18,9 @@ def main() -> int:
     add_uo_root_arg(parser)
     args = parser.parse_args()
 
-    init_files(resolve_uo_root(args.uo_root), require=True, require_any=("verdata.mul",))
+    init_files(
+        resolve_uo_root(args.uo_root), require=True, require_any=("verdata.mul",)
+    )
     Verdata.initialize()
 
     # Query a couple known ids; many installs will have none.

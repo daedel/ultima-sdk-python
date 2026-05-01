@@ -15,7 +15,12 @@ from ._common import add_uo_root_arg, init_files, resolve_uo_root
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_uo_root_arg(parser)
-    parser.add_argument("--item", type=lambda s: int(s, 0), default=0x0EED, help="Item id (default: 0x0EED)")
+    parser.add_argument(
+        "--item",
+        type=lambda s: int(s, 0),
+        default=0x0EED,
+        help="Item id (default: 0x0EED)",
+    )
     parser.add_argument("--body", type=int, default=None, help="Optional body id")
     args = parser.parse_args()
 

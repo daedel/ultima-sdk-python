@@ -62,10 +62,9 @@ class FileIndex:
         """Load index from `self.idx_path` on disk."""
         idx_path = self.idx_path
         if idx_path is None:
-            raise FileParseError("Index file path is not set",
-                                 file_path=idx_path)
+            raise FileParseError("Index file path is not set", file_path=idx_path)
         try:
-            with open(idx_path, 'rb') as f:
+            with open(idx_path, "rb") as f:
                 reader = BinaryReader(f)
                 while True:
                     try:
@@ -78,8 +77,7 @@ class FileIndex:
                     except EOFError:
                         break
         except FileNotFoundError:
-            raise FileParseError("Index file not found",
-                                 file_path=self.idx_path)
+            raise FileParseError("Index file not found", file_path=self.idx_path)
 
     def load_from_bytes(self, data: bytes) -> None:
         """Load index entries from a bytes buffer.
@@ -98,8 +96,7 @@ class FileIndex:
                     offset = reader.read_uint32()
                     length = reader.read_uint32()
                     extra = reader.read_uint32()
-                    entry = FileIndexEntry(offset=offset, length=length,
-                                           extra=extra)
+                    entry = FileIndexEntry(offset=offset, length=length, extra=extra)
                     self.entries.append(entry)
                 except EOFError:
                     break
@@ -150,7 +147,7 @@ class FileIndex:
             return None
 
         try:
-            with open(self.mul_path, 'rb') as f:
+            with open(self.mul_path, "rb") as f:
                 f.seek(entry.offset)
                 return f.read(entry.length)
         except Exception:

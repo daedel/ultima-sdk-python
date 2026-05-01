@@ -11,7 +11,7 @@ def _write_art_with_missing_0_present_1(tmp_path):
     # art entry in raw test format: u16 width/height + pixels
     width = 44
     height = 44
-    pixels = b"\xAA\xBB" * (width * height)
+    pixels = b"\xaa\xbb" * (width * height)
     art_entry = struct.pack("<HH", width, height) + pixels
 
     mul_path = tmp_path / "art.mul"
@@ -19,7 +19,9 @@ def _write_art_with_missing_0_present_1(tmp_path):
 
     # idx: entry 0 missing (-1,0,0), entry 1 points to offset 0
     idx_path = tmp_path / "artidx.mul"
-    idx_path.write_bytes(struct.pack("<iii", -1, 0, 0) + struct.pack("<iii", 0, len(art_entry), 0))
+    idx_path.write_bytes(
+        struct.pack("<iii", -1, 0, 0) + struct.pack("<iii", 0, len(art_entry), 0)
+    )
 
     Art._initialized = False
     Art._index = None

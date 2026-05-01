@@ -14,21 +14,28 @@ from .exceptions import FileAccessException
 class MultiComponent:
     """Represents a single component of a multi-tile object."""
 
-    def __init__(self, item_id: int, x: int, y: int, z: int,
-                 flags: int = 0, unk1: int | None = None):
+    def __init__(
+        self,
+        item_id: int,
+        x: int,
+        y: int,
+        z: int,
+        flags: int = 0,
+        unk1: int | None = None,
+    ):
         self.item_id = item_id
-        self.x       = x
-        self.y       = y
-        self.z       = z
-        self.flags   = flags
-        self.unk1    = unk1
+        self.x = x
+        self.y = y
+        self.z = z
+        self.flags = flags
+        self.unk1 = unk1
 
 
 class MultiData:
     """Represents multi-tile object data."""
 
     def __init__(self, multi_id: int):
-        self.multi_id   = multi_id
+        self.multi_id = multi_id
         self.components: List[MultiComponent] = []
 
     def add_component(self, component: MultiComponent) -> None:
@@ -56,7 +63,9 @@ class MultiData:
             base = struct.pack(
                 "<Hhhhi",
                 c.item_id & 0xFFFF,
-                c.x, c.y, c.z,
+                c.x,
+                c.y,
+                c.z,
                 c.flags,
             )
             if use_extended:
@@ -69,7 +78,7 @@ class Multis:
     """Static class for managing multi data."""
 
     _multis: Dict[int, MultiData] = {}
-    _index:  Optional[FileIndex] = None
+    _index: Optional[FileIndex] = None
     _initialized = False
 
     # ------------------------------------------------------------------
@@ -77,14 +86,17 @@ class Multis:
     # ------------------------------------------------------------------
 
     @classmethod
-    def initialize(cls, idx_path: str | None = None,
-                   mul_path: str | None = None) -> bool:
+    def initialize(
+        cls, idx_path: str | None = None, mul_path: str | None = None
+    ) -> bool:
         if cls._initialized:
             if idx_path is None and mul_path is None:
                 return True
-            if (cls._index
-                    and idx_path == cls._index.idx_path
-                    and mul_path == cls._index.mul_path):
+            if (
+                cls._index
+                and idx_path == cls._index.idx_path
+                and mul_path == cls._index.mul_path
+            ):
                 return True
 
         try:
@@ -105,7 +117,8 @@ class Multis:
     @classmethod
     def _load_multis(cls, idx_path: str, mul_path: str) -> None:
         from .verdata_ids import IDS as VERDATA_IDS
-        cls._index  = FileIndex(idx_path, mul_path, file_id=VERDATA_IDS.MULTI_MUL)
+
+        cls._index = FileIndex(idx_path, mul_path, file_id=VERDATA_IDS.MULTI_MUL)
         cls._multis = {}
 
     # ------------------------------------------------------------------
@@ -152,14 +165,17 @@ class Multis:
             count = len(data) // record_size
             comps: List[MultiComponent] = []
             for i in range(count):
-                base    = i * record_size
+                base = i * record_size
                 item_id, x, y, z = struct.unpack_from("<Hhhh", data, base)
-                flags   = struct.unpack_from("<i", data, base + 8)[0]
-                unk1    = None
+                flags = struct.unpack_from("<i", data, base + 8)[0]
+                unk1 = None
                 if use_new_format:
                     unk1 = struct.unpack_from("<i", data, base + 12)[0]
-                comps.append(MultiComponent(item_id=item_id, x=x, y=y, z=z,
-                                            flags=flags, unk1=unk1))
+                comps.append(
+                    MultiComponent(
+                        item_id=item_id, x=x, y=y, z=z, flags=flags, unk1=unk1
+                    )
+                )
             score = cls._score_decoding(comps)
             if best_score is None or score > best_score:
                 best_score = score
@@ -238,9 +254,12 @@ class Multis:
         idx_entries: List[tuple[int, int, int]] = []
 
         for i in range(total):
-            multi  = cls._multis.get(i)
-            record = multi.to_bytes(use_extended=use_extended) if multi is not None \
-                     else (cls._index.read_raw(i) or b"")
+            multi = cls._multis.get(i)
+            record = (
+                multi.to_bytes(use_extended=use_extended)
+                if multi is not None
+                else (cls._index.read_raw(i) or b"")
+            )
 
             if record:
                 offset = len(mul_buf)
@@ -249,9 +268,9 @@ class Multis:
             else:
                 idx_entries.append((0xFFFFFFFF, 0, 0))
 
-        with open(mul_path, 'wb') as f:
+        with open(mul_path, "wb") as f:
             f.write(mul_buf)
 
-        with open(idx_path, 'wb') as f:
+        with open(idx_path, "wb") as f:
             for offset, length, extra in idx_entries:
                 f.write(struct.pack("<III", offset, length, extra))

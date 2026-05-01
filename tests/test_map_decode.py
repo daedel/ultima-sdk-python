@@ -4,7 +4,9 @@ from ultima_sdk.files import Files
 from ultima_sdk.map import Map
 
 
-def _build_single_block_map(tile_overrides: dict[tuple[int, int], tuple[int, int]]) -> bytes:
+def _build_single_block_map(
+    tile_overrides: dict[tuple[int, int], tuple[int, int]],
+) -> bytes:
     # One 8x8 block => 196 bytes
     out = bytearray(struct.pack("<i", 0))  # block header
     for y in range(8):
@@ -17,9 +19,7 @@ def _build_single_block_map(tile_overrides: dict[tuple[int, int], tuple[int, int
 
 def test_map_reads_land_tile_from_single_block_file(tmp_path):
     d = tmp_path
-    (d / "map0.mul").write_bytes(
-        _build_single_block_map({(3, 5): (0x1234, -7)})
-    )
+    (d / "map0.mul").write_bytes(_build_single_block_map({(3, 5): (0x1234, -7)}))
 
     Files.set_directory(str(d))
     assert Map.initialize() is True

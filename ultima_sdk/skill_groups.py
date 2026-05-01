@@ -89,7 +89,7 @@ class SkillGroups:
 
         for i in range(count - 1):
             entry_off = start + (i * str_len)
-            raw = data[entry_off:entry_off + str_len]
+            raw = data[entry_off : entry_off + str_len]
             if unicode_mode:
                 chars: List[str] = []
                 for j in range(0, len(raw), 2):
@@ -140,4 +140,3 @@ class SkillGroups:
         if 0 <= group_id < len(cls._groups):
             return cls._groups[group_id]
         return None
-    

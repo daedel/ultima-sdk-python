@@ -34,7 +34,7 @@ class RadarCol:
     @classmethod
     def _load_colors(cls, path: str) -> None:
         """Load color data."""
-        with open(path, 'rb') as f:
+        with open(path, "rb") as f:
             reader = BinaryReader(f)
             # Each color is typically 2 bytes (16-bit color)
             while True:

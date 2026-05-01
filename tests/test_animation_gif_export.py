@@ -32,14 +32,16 @@ def test_save_gif_calls_pillow_save(monkeypatch, tmp_path):
     def fake_animation_to_images(_anim):
         return [img0, img1]
 
-    monkeypatch.setattr(AnimationEdit, "animation_to_images", staticmethod(fake_animation_to_images))
+    monkeypatch.setattr(
+        AnimationEdit, "animation_to_images", staticmethod(fake_animation_to_images)
+    )
 
     out = tmp_path / "anim.gif"
     anim: Any = _FakeAnimation(frames_present=True)
     assert AnimationEdit.save_gif(anim, out, duration_ms=123, loop=7) is True
 
     assert len(img0.calls) == 1
-    (args, kwargs) = img0.calls[0]
+    args, kwargs = img0.calls[0]
     assert args[0] == str(out)
     assert kwargs["format"] == "GIF"
     assert kwargs["save_all"] is True
@@ -54,13 +56,17 @@ def test_save_gif_invalid_path_raises():
 
 
 def test_animations_save_gif_returns_false_when_missing(monkeypatch, tmp_path):
-    monkeypatch.setattr(Animations, "get_animation", staticmethod(lambda *_a, **_k: None))
+    monkeypatch.setattr(
+        Animations, "get_animation", staticmethod(lambda *_a, **_k: None)
+    )
     assert Animations.save_gif(0, 0, 0, tmp_path / "x.gif") is False
 
 
 def test_animations_save_gif_delegates_to_animation_edit(monkeypatch, tmp_path):
     fake_anim = object()
-    monkeypatch.setattr(Animations, "get_animation", staticmethod(lambda *_a, **_k: fake_anim))
+    monkeypatch.setattr(
+        Animations, "get_animation", staticmethod(lambda *_a, **_k: fake_anim)
+    )
 
     called = {}
 

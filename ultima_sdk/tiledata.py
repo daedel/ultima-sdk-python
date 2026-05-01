@@ -12,52 +12,53 @@ from .exceptions import FileAccessException
 
 class TileFlag:
     """Flags for tile properties."""
-    NONE        = 0x00000000
-    BACKGROUND  = 0x00000001
-    WEAPON      = 0x00000002
+
+    NONE = 0x00000000
+    BACKGROUND = 0x00000001
+    WEAPON = 0x00000002
     TRANSPARENT = 0x00000004
     TRANSLUCENT = 0x00000008
-    WALL        = 0x00000010
-    DAMAGING    = 0x00000020
-    IMPASSABLE  = 0x00000040
-    WET         = 0x00000080
-    UNKNOWN1    = 0x00000100
-    SURFACE     = 0x00000200
-    BRIDGE      = 0x00000400
-    STACKABLE   = 0x00000800
-    WINDOW      = 0x00001000
-    NO_SHOOT    = 0x00002000
+    WALL = 0x00000010
+    DAMAGING = 0x00000020
+    IMPASSABLE = 0x00000040
+    WET = 0x00000080
+    UNKNOWN1 = 0x00000100
+    SURFACE = 0x00000200
+    BRIDGE = 0x00000400
+    STACKABLE = 0x00000800
+    WINDOW = 0x00001000
+    NO_SHOOT = 0x00002000
     ARTICULATED = 0x00004000
-    FOLIAGE     = 0x00008000
+    FOLIAGE = 0x00008000
     PARTIAL_HUE = 0x00010000
-    UNKNOWN2    = 0x00020000
-    MAP         = 0x00040000
-    CONTAINER   = 0x00080000
-    WEARABLE    = 0x00100000
-    LIGHT_SOURCE= 0x00200000
-    ANIMATED    = 0x00400000
-    HOVEROVER   = 0x00800000
-    UNKNOWN3    = 0x01000000
-    ARMOR       = 0x02000000
-    ROOF        = 0x04000000
-    DOOR        = 0x08000000
-    STAIRS      = 0x10000000
-    LAVA        = 0x20000000
-    UNKNOWN4    = 0x40000000
-    UNKNOWNX    = 0x80000000
+    UNKNOWN2 = 0x00020000
+    MAP = 0x00040000
+    CONTAINER = 0x00080000
+    WEARABLE = 0x00100000
+    LIGHT_SOURCE = 0x00200000
+    ANIMATED = 0x00400000
+    HOVEROVER = 0x00800000
+    UNKNOWN3 = 0x01000000
+    ARMOR = 0x02000000
+    ROOF = 0x04000000
+    DOOR = 0x08000000
+    STAIRS = 0x10000000
+    LAVA = 0x20000000
+    UNKNOWN4 = 0x40000000
+    UNKNOWNX = 0x80000000
 
 
 # Byte sizes for the two entry formats.
-_LAND_ENTRY_SIZE = 26   # uint32 flags + uint16 texture_id + 20-byte name
-_ITEM_ENTRY_SIZE = 37   # uint32 flags + byte weight + byte quality + uint16 quantity
-                        # + uint16 value + byte height + 20-byte name
+_LAND_ENTRY_SIZE = 26  # uint32 flags + uint16 texture_id + 20-byte name
+_ITEM_ENTRY_SIZE = 37  # uint32 flags + byte weight + byte quality + uint16 quantity
+# + uint16 value + byte height + 20-byte name
 # tiledata.mul layout:
 #   512 land-tile header groups * (4-byte group header + 32 * 26-byte entries)
 #   512 item-tile header groups * (4-byte group header + 32 * 37-byte entries)
 _LAND_GROUP_ENTRIES = 32
 _ITEM_GROUP_ENTRIES = 32
-_LAND_GROUPS  = 512
-_ITEM_GROUPS  = 512
+_LAND_GROUPS = 512
+_ITEM_GROUPS = 512
 
 
 class TileData:
@@ -80,7 +81,7 @@ class TileData:
             path = Files.get_file_path("tiledata.mul")
             if not path:
                 return False
-            with open(path, 'rb') as f:
+            with open(path, "rb") as f:
                 reader = BinaryReader(f)
                 cls._load_tiledata(reader)
                 cls._initialized = True
@@ -106,21 +107,21 @@ class TileData:
     @staticmethod
     def _read_land_tile_entry(reader: BinaryReader) -> Dict:
         return {
-            'flags':      reader.read_uint32(),
-            'texture_id': reader.read_uint16(),
-            'name':       reader.read_string(20, null_terminated=True).strip('\x00'),
+            "flags": reader.read_uint32(),
+            "texture_id": reader.read_uint16(),
+            "name": reader.read_string(20, null_terminated=True).strip("\x00"),
         }
 
     @staticmethod
     def _read_item_tile_entry(reader: BinaryReader) -> Dict:
         return {
-            'flags':    reader.read_uint32(),
-            'weight':   reader.read_byte(),
-            'quality':  reader.read_byte(),
-            'quantity': reader.read_uint16(),
-            'value':    reader.read_uint16(),
-            'height':   reader.read_byte(),
-            'name':     reader.read_string(20, null_terminated=True).strip('\x00'),
+            "flags": reader.read_uint32(),
+            "weight": reader.read_byte(),
+            "quality": reader.read_byte(),
+            "quantity": reader.read_uint16(),
+            "value": reader.read_uint16(),
+            "height": reader.read_byte(),
+            "name": reader.read_string(20, null_terminated=True).strip("\x00"),
         }
 
     # ------------------------------------------------------------------
@@ -195,9 +196,8 @@ class TileData:
 
     @classmethod
     def _encode_land_entry(cls, entry: Dict) -> bytes:
-        return (
-            struct.pack("<IH", entry['flags'], entry['texture_id'])
-            + cls._pack_name(entry['name'])
+        return struct.pack("<IH", entry["flags"], entry["texture_id"]) + cls._pack_name(
+            entry["name"]
         )
 
     @classmethod
@@ -205,14 +205,14 @@ class TileData:
         return (
             struct.pack(
                 "<IBBHH",
-                entry['flags'],
-                entry['weight'],
-                entry['quality'],
-                entry['quantity'],
-                entry['value'],
+                entry["flags"],
+                entry["weight"],
+                entry["quality"],
+                entry["quantity"],
+                entry["value"],
             )
-            + struct.pack("<B", entry['height'])
-            + cls._pack_name(entry['name'])
+            + struct.pack("<B", entry["height"])
+            + cls._pack_name(entry["name"])
         )
 
     # ------------------------------------------------------------------
@@ -234,7 +234,7 @@ class TileData:
         if not path:
             raise FileAccessException("No tiledata.mul path available")
 
-        with open(path, 'wb') as f:
+        with open(path, "wb") as f:
             # Land groups
             for g in range(_LAND_GROUPS):
                 f.write(struct.pack("<I", 0))  # group header

@@ -10,7 +10,14 @@ from pathlib import Path
 
 from ultima_sdk.hues import Hues
 
-from ._common import add_out_arg, add_uo_root_arg, ensure_out_dir, init_files, resolve_uo_root, save_uo16_image
+from ._common import (
+    add_out_arg,
+    add_uo_root_arg,
+    ensure_out_dir,
+    init_files,
+    resolve_uo_root,
+    save_uo16_image,
+)
 
 
 def main() -> int:
@@ -39,7 +46,7 @@ def main() -> int:
         for y in range(h_px):
             for x in range(16):
                 idx = (y * w + (i * 16 + x)) * 2
-                pixels[idx:idx + 2] = color.to_bytes(2, "little", signed=False)
+                pixels[idx : idx + 2] = color.to_bytes(2, "little", signed=False)
 
     out_path = Path(out_dir) / "hue0_palette.png"
     saved = save_uo16_image(w, h_px, bytes(pixels), out_path)

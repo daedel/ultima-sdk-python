@@ -21,20 +21,25 @@ from .exceptions import FileAccessException
 #     32 bytes  = 16 * uint16 colors again (duplicate "table" copy)
 
 _HUES_PER_GROUP = 8
-_ENTRY_SIZE     = 88
-_GROUPS         = 375
-_TOTAL_HUES     = _HUES_PER_GROUP * _GROUPS  # 3000
+_ENTRY_SIZE = 88
+_GROUPS = 375
+_TOTAL_HUES = _HUES_PER_GROUP * _GROUPS  # 3000
 
 
 class HueEntry:
     """Represents a single hue color entry."""
 
-    def __init__(self, colors: List[int], table_start: int = 0,
-                 table_end: int = 0, name: str = ""):
-        self.colors: List[int] = list(colors)   # 16 BGR-555 values
+    def __init__(
+        self,
+        colors: List[int],
+        table_start: int = 0,
+        table_end: int = 0,
+        name: str = "",
+    ):
+        self.colors: List[int] = list(colors)  # 16 BGR-555 values
         self.table_start = table_start
-        self.table_end   = table_end
-        self.name        = name
+        self.table_end = table_end
+        self.name = name
 
     def get_color(self, index: int) -> Optional[int]:
         if 0 <= index < len(self.colors):
@@ -66,7 +71,7 @@ class Hues:
             path = Files.get_file_path("hues.mul")
             if not path:
                 return False
-            with open(path, 'rb') as f:
+            with open(path, "rb") as f:
                 reader = BinaryReader(f)
                 cls._load_hues(reader)
                 cls._initialized = True
@@ -80,11 +85,11 @@ class Hues:
         for _group in range(_GROUPS):
             reader.read_uint32()  # group header
             for _ in range(_HUES_PER_GROUP):
-                colors      = [reader.read_uint16() for _ in range(16)]
+                colors = [reader.read_uint16() for _ in range(16)]
                 table_start = reader.read_uint16()
-                table_end   = reader.read_uint16()
-                raw_name    = reader.read_string(20, null_terminated=True)
-                name        = raw_name.strip('\x00')
+                table_end = reader.read_uint16()
+                raw_name = reader.read_string(20, null_terminated=True)
+                name = raw_name.strip("\x00")
                 cls._hues.append(HueEntry(colors, table_start, table_end, name))
 
     # ------------------------------------------------------------------
@@ -110,10 +115,14 @@ class Hues:
     # ------------------------------------------------------------------
 
     @classmethod
-    def set_hue(cls, id: int, colors: List[int] | None = None,
-                table_start: int | None = None,
-                table_end: int | None = None,
-                name: str | None = None) -> None:
+    def set_hue(
+        cls,
+        id: int,
+        colors: List[int] | None = None,
+        table_start: int | None = None,
+        table_end: int | None = None,
+        name: str | None = None,
+    ) -> None:
         """Patch a hue entry in memory. Call :meth:`save` to persist.
 
         Parameters
@@ -162,7 +171,7 @@ class Hues:
         if not path:
             raise FileAccessException("No hues.mul path available")
 
-        with open(path, 'wb') as f:
+        with open(path, "wb") as f:
             for g in range(_GROUPS):
                 f.write(struct.pack("<I", 0))  # group header
                 for i in range(_HUES_PER_GROUP):

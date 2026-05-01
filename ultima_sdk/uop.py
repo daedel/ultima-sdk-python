@@ -24,7 +24,6 @@ import re
 import struct
 import zlib
 
-
 _UOP_MAGIC = 0x50594D  # 'MYP'
 
 
@@ -91,8 +90,12 @@ def create_hash(s: str) -> int:
 
     i = 0
     while i + 12 < len(b):
-        edi = _u32(((b[i + 7] << 24) | (b[i + 6] << 16) | (b[i + 5] << 8) | b[i + 4]) + edi)
-        esi = _u32(((b[i + 11] << 24) | (b[i + 10] << 16) | (b[i + 9] << 8) | b[i + 8]) + esi)
+        edi = _u32(
+            ((b[i + 7] << 24) | (b[i + 6] << 16) | (b[i + 5] << 8) | b[i + 4]) + edi
+        )
+        esi = _u32(
+            ((b[i + 11] << 24) | (b[i + 10] << 16) | (b[i + 9] << 8) | b[i + 8]) + esi
+        )
         edx = _u32(((b[i + 3] << 24) | (b[i + 2] << 16) | (b[i + 1] << 8) | b[i]) - esi)
 
         edx = _u32((edx + ebx) ^ (esi >> 28) ^ _u32(esi << 4))
@@ -335,7 +338,9 @@ class UopFile:
             if len(header) != 28:
                 raise UopFormatError("UOP header too short")
 
-            magic, version, ts, next_block, block_size, count = struct.unpack("<IIIqIi", header)
+            magic, version, ts, next_block, block_size, count = struct.unpack(
+                "<IIIqIi", header
+            )
             if magic != _UOP_MAGIC:
                 raise UopFormatError("Bad UOP magic")
 
@@ -355,10 +360,12 @@ class UopFile:
                 for _ in range(int(files_count)):
                     ent = f.read(34)
                     if len(ent) != 34:
-                        raise UopFormatError("Unexpected EOF while reading block entries")
+                        raise UopFormatError(
+                            "Unexpected EOF while reading block entries"
+                        )
 
-                    offset, header_len, comp_len, decomp_len, h, data_hash, flag = struct.unpack(
-                        "<qiiiQIh", ent
+                    offset, header_len, comp_len, decomp_len, h, data_hash, flag = (
+                        struct.unpack("<qiiiQIh", ent)
                     )
 
                     if offset == 0:
@@ -417,7 +424,9 @@ class UopFile:
             return None
 
         try:
-            return _decompress(entry.compression_flag, payload, entry.decompressed_length)
+            return _decompress(
+                entry.compression_flag, payload, entry.decompressed_length
+            )
         except UopCompressionError:
             # For now, treat unsupported compression as missing.
             raise

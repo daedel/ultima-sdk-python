@@ -147,7 +147,10 @@ def test_smoke_light_can_decode_one_entry():
             continue
         assert light.width > 0 and light.height > 0
         # Either 8-bit intensity or 16-bit pixels.
-        assert len(light.pixels) in (light.width * light.height, light.width * light.height * 2)
+        assert len(light.pixels) in (
+            light.width * light.height,
+            light.width * light.height * 2,
+        )
         img = light.to_image()
         assert img.size == (light.width, light.height)
         return

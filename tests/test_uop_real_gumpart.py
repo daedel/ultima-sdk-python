@@ -34,7 +34,9 @@ def test_real_gumpart_uop_can_decode_one_entry():
 
     root = _get_installed_uo_root()
     if not root:
-        pytest.skip("Set UO_ROOT (or ULTIMA_ONLINE_DIR) to your installed client directory")
+        pytest.skip(
+            "Set UO_ROOT (or ULTIMA_ONLINE_DIR) to your installed client directory"
+        )
 
     p = Path(root) / "gumpartlegacymul.uop"
     if not p.exists():

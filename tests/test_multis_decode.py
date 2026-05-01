@@ -38,7 +38,11 @@ def test_multis_decode_classic_12b_entries(tmp_path):
     assert multi.multi_id == 0
     assert len(multi.components) == 2
     assert multi.components[0].item_id == 0x1234
-    assert (multi.components[0].x, multi.components[0].y, multi.components[0].z) == (1, 2, 3)
+    assert (multi.components[0].x, multi.components[0].y, multi.components[0].z) == (
+        1,
+        2,
+        3,
+    )
     assert multi.components[0].flags == 0x10
     assert multi.components[0].unk1 is None
 

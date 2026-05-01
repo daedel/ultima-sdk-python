@@ -30,9 +30,7 @@ def _require_pillow():
         )
 
 
-def uo_16bit_555_to_rgba(
-    pixels: bytes, *, transparent_zero: bool = True
-) -> bytes:
+def uo_16bit_555_to_rgba(pixels: bytes, *, transparent_zero: bool = True) -> bytes:
     """Convert little-endian 16-bit 5-5-5 pixels to RGBA bytes.
 
     Args:

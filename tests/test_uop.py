@@ -7,7 +7,14 @@ import zlib
 from ultima_sdk.uop import UopBackedIndex, UopFile, create_hash
 
 
-def _build_uop_single_entry(*, pattern: str, entry_id: int, payload: bytes, flag: int = 0, has_extra: bool = False) -> bytes:
+def _build_uop_single_entry(
+    *,
+    pattern: str,
+    entry_id: int,
+    payload: bytes,
+    flag: int = 0,
+    has_extra: bool = False,
+) -> bytes:
     """Build a minimal UOP with a single entry.
 
     This is a synthetic fixture to validate parsing + hash lookup.
@@ -88,7 +95,9 @@ def test_uop_reads_raw_uncompressed(tmp_path):
     pattern = "build/artlegacymul/{0:D8}.tga"
     payload = b"HELLO_UOP"
 
-    uop_bytes = _build_uop_single_entry(pattern=pattern, entry_id=5, payload=payload, has_extra=False)
+    uop_bytes = _build_uop_single_entry(
+        pattern=pattern, entry_id=5, payload=payload, has_extra=False
+    )
     p = tmp_path / "artlegacymul.uop"
     p.write_bytes(uop_bytes)
 
@@ -101,7 +110,9 @@ def test_uop_has_extra_skips_prefix(tmp_path):
     pattern = "build/gumpartlegacymul/{0:D8}.tga"
     payload = b"PAYLOAD_AFTER_EXTRA"
 
-    uop_bytes = _build_uop_single_entry(pattern=pattern, entry_id=0, payload=payload, has_extra=True)
+    uop_bytes = _build_uop_single_entry(
+        pattern=pattern, entry_id=0, payload=payload, has_extra=True
+    )
     p = tmp_path / "gumpartlegacymul.uop"
     p.write_bytes(uop_bytes)
 

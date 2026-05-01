@@ -48,7 +48,9 @@ class Art:
     _initialized = False
 
     @classmethod
-    def initialize(cls, idx_path: str | None = None, mul_path: str | None = None) -> bool:
+    def initialize(
+        cls, idx_path: str | None = None, mul_path: str | None = None
+    ) -> bool:
         """Initialize the art index.
 
         Args:
@@ -109,7 +111,9 @@ class Art:
         # Try to decode as a "static" art entry first (width/height header).
         try:
             width, height, pixels_uo16 = cls._decode_static_art(raw)
-            return ArtData(graphic_id=graphic_id, width=width, height=height, pixels=pixels_uo16)
+            return ArtData(
+                graphic_id=graphic_id, width=width, height=height, pixels=pixels_uo16
+            )
         except Exception:
             pass
 
@@ -120,7 +124,9 @@ class Art:
         raise FileParseError("Unsupported art data format")
 
     @classmethod
-    def get_equipped_art(cls, item_id: int, *, body_id: int | None = None) -> Optional[ArtData]:
+    def get_equipped_art(
+        cls, item_id: int, *, body_id: int | None = None
+    ) -> Optional[ArtData]:
         """Get art for an equipped item, applying `equipconv.def` if available.
 
         This is a convenience wrapper for paperdoll/equipment rendering.
@@ -154,7 +160,11 @@ class Art:
         except Exception as e:
             raise FileAccessException(f"Invalid output path: {e}")
 
-        data = cls.get_equipped_art(int(graphic_id), body_id=body_id) if body_id is not None else cls.get_art(int(graphic_id))
+        data = (
+            cls.get_equipped_art(int(graphic_id), body_id=body_id)
+            if body_id is not None
+            else cls.get_art(int(graphic_id))
+        )
         if data is None:
             return False
 
@@ -247,7 +257,7 @@ class Art:
                 for _ in range(run):
                     if 0 <= x < width:
                         out_index = (y * width + x) * 2
-                        out[out_index:out_index + 2] = data[pos:pos + 2]
+                        out[out_index : out_index + 2] = data[pos : pos + 2]
                     pos += 2
                     x += 1
 
@@ -300,7 +310,7 @@ class ArtLoader:
         pixel_bytes_needed = width * height * 2
         if len(data) - 4 < pixel_bytes_needed:
             raise FileParseError("Insufficient pixel data")
-        pixels = data[4:4 + pixel_bytes_needed]
+        pixels = data[4 : 4 + pixel_bytes_needed]
         return ArtTile(width, height, pixels)
 
     def load_tile(self, tile_id: int) -> Optional[ArtTile]:

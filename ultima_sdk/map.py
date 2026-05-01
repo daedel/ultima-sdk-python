@@ -65,7 +65,9 @@ class Map:
             if map_mul:
                 width, height = cls._infer_map_size(i, map_mul)
                 map_data = MapData(i)
-                map_data.tile_matrix = TileMatrix(map_id=i, width=width, height=height, map_path=map_mul)
+                map_data.tile_matrix = TileMatrix(
+                    map_id=i, width=width, height=height, map_path=map_mul
+                )
                 cls._maps[i] = map_data
                 continue
 
@@ -146,9 +148,13 @@ class Map:
                 if entry is None:
                     break
                 saw_any = True
-                length = entry.decompressed_length if entry.decompressed_length > 0 else entry.compressed_length
+                length = (
+                    entry.decompressed_length
+                    if entry.decompressed_length > 0
+                    else entry.compressed_length
+                )
                 if length > 0:
-                    blocks += (length // 196)
+                    blocks += length // 196
 
             if not saw_any or blocks <= 0:
                 return cls.DEFAULT_MAP_SIZES.get(map_id, (8, 8))

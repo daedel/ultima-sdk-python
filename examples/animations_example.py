@@ -13,7 +13,14 @@ from pathlib import Path
 
 from ultima_sdk.animations import Animations
 
-from ._common import add_out_arg, add_uo_root_arg, ensure_out_dir, init_files, resolve_uo_root, save_uo16_image
+from ._common import (
+    add_out_arg,
+    add_uo_root_arg,
+    ensure_out_dir,
+    init_files,
+    resolve_uo_root,
+    save_uo16_image,
+)
 
 
 def main() -> int:
@@ -36,7 +43,10 @@ def main() -> int:
 
     print(f"Frames: {len(anim.frames)}")
     frame0 = anim.frames[0]
-    out_path = Path(out_dir) / f"anim_body{args.body}_act{args.action}_dir{args.direction}_frame0.png"
+    out_path = (
+        Path(out_dir)
+        / f"anim_body{args.body}_act{args.action}_dir{args.direction}_frame0.png"
+    )
     saved = save_uo16_image(frame0.width, frame0.height, frame0.pixels, out_path)
     print(f"Wrote {saved}")
     return 0

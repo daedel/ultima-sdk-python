@@ -1,6 +1,7 @@
 """Tests for art module."""
 
 import pytest
+
 # from io import BytesIO
 from PIL import Image
 from unittest.mock import patch, mock_open
@@ -21,7 +22,7 @@ class TestArtTile:
     def test_to_image(self) -> None:
         """Test converting to PIL Image."""
         # Mock RGBA data
-        data = b'\xFF\x00\x00\xFF' * (44 * 44)  # Red pixels
+        data = b"\xff\x00\x00\xff" * (44 * 44)  # Red pixels
         tile = ArtTile(44, 44, data)
         img = tile.to_image()
         assert isinstance(img, Image.Image)
@@ -40,17 +41,17 @@ class TestArtLoader:
     def sample_art_data(self) -> bytes:
         """Sample art.mul data (mocked header + tile)."""
         # Mock: width=44, height=44, then pixel data
-        header = b'\x2C\x00\x2C\x00'  # Little-endian uint16
-        pixels = b'\x00' * (44 * 44 * 2)  # Mock 16-bit pixels
+        header = b"\x2c\x00\x2c\x00"  # Little-endian uint16
+        pixels = b"\x00" * (44 * 44 * 2)  # Mock 16-bit pixels
         return header + pixels
 
     def test_load_tile(self, loader: ArtLoader, sample_art_data: bytes) -> None:
         """Test loading a tile via FileIndex + file read."""
-        with patch.object(loader, 'file_index') as mock_index:
+        with patch.object(loader, "file_index") as mock_index:
             mock_index.get_entry.return_value = type(
-                'Entry', (), {'offset': 0, 'length': len(sample_art_data)}
+                "Entry", (), {"offset": 0, "length": len(sample_art_data)}
             )()
-            with patch('builtins.open', mock_open(read_data=sample_art_data)):
+            with patch("builtins.open", mock_open(read_data=sample_art_data)):
                 tile = loader.load_tile(0)
                 assert tile is not None
                 assert tile.width == 44
@@ -58,20 +59,24 @@ class TestArtLoader:
 
     def test_load_tile_invalid_data(self, loader: ArtLoader) -> None:
         """Test loading invalid data raises FileParseError."""
-        with patch.object(loader, 'file_index') as mock_index:
+        with patch.object(loader, "file_index") as mock_index:
             mock_index.get_entry.return_value = type(
-                'Entry', (), {'offset': 0, 'length': 7}
+                "Entry", (), {"offset": 0, "length": 7}
             )()
-            with patch('builtins.open', mock_open(read_data=b"invalid")):
+            with patch("builtins.open", mock_open(read_data=b"invalid")):
                 with pytest.raises(FileParseError):
                     loader.load_tile(0)
 
     @pytest.mark.parametrize("tile_id", [0, 1000, 0x3FFF])  # Valid range
-    def test_load_tile_by_id(self, loader: ArtLoader, sample_art_data: bytes, tile_id: int) -> None:
+    def test_load_tile_by_id(
+        self, loader: ArtLoader, sample_art_data: bytes, tile_id: int
+    ) -> None:
         """Test loading tile by ID."""
         # Assuming loader has a method to load by ID with index
-        with patch.object(loader, 'file_index') as mock_index:
-            mock_index.get_entry.return_value = type('Entry', (), {'offset': 0, 'length': len(sample_art_data)})()
+        with patch.object(loader, "file_index") as mock_index:
+            mock_index.get_entry.return_value = type(
+                "Entry", (), {"offset": 0, "length": len(sample_art_data)}
+            )()
             with patch("builtins.open", mock_open(read_data=sample_art_data)):
                 tile = loader.load_tile_by_id(tile_id)
                 assert isinstance(tile, ArtTile)

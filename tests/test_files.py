@@ -30,7 +30,7 @@ def test_require_files_multiple(tmp_path):
     Files.set_directory(str(d))
     res = Files.require_files(["a.mul", "b.mul"])
     assert "a.mul" in res and "b.mul" in res
-    assert os.path.exists(res["a.mul"]) and os.path.exists(res["b.mul"]) 
+    assert os.path.exists(res["a.mul"]) and os.path.exists(res["b.mul"])
 
 
 def test_require_files_raises_for_missing(tmp_path):

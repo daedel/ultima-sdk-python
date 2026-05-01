@@ -31,7 +31,9 @@ class Skills:
     _initialized = False
 
     @classmethod
-    def initialize(cls, idx_path: str | None = None, mul_path: str | None = None) -> bool:
+    def initialize(
+        cls, idx_path: str | None = None, mul_path: str | None = None
+    ) -> bool:
         """Initialize skill data."""
         if cls._initialized:
             if idx_path is None and mul_path is None:
@@ -47,7 +49,9 @@ class Skills:
             raise FileAccessException(f"Failed to initialize skills: {e}")
 
     @classmethod
-    def _load_skills(cls, idx_path: str | None = None, mul_path: str | None = None) -> None:
+    def _load_skills(
+        cls, idx_path: str | None = None, mul_path: str | None = None
+    ) -> None:
         """Load skill data from file."""
         cls._skills = []
         cls._skill_map = {}
@@ -92,20 +96,24 @@ class Skills:
             name_len = struct.unpack_from("<H", data, 0)[0]
             if 0 < name_len <= len(data) - 6:
                 if len(data) == 2 + name_len + 4:
-                    name_bytes = data[2:2 + name_len]
+                    name_bytes = data[2 : 2 + name_len]
                     button_id = struct.unpack_from("<i", data, 2 + name_len)[0]
                     if 0 <= button_id <= 0x7FFFFFFF:
-                        return make(name_bytes.decode("utf-8", errors="replace"), button_id)
+                        return make(
+                            name_bytes.decode("utf-8", errors="replace"), button_id
+                        )
 
         # Format B: byte name_len, name bytes, int32 button_id
         if len(data) >= 1 + 4:
             name_len8 = data[0]
             if 0 < name_len8 <= len(data) - 5:
                 if len(data) == 1 + name_len8 + 4:
-                    name_bytes = data[1:1 + name_len8]
+                    name_bytes = data[1 : 1 + name_len8]
                     button_id = struct.unpack_from("<i", data, 1 + name_len8)[0]
                     if 0 <= button_id <= 0x7FFFFFFF:
-                        return make(name_bytes.decode("utf-8", errors="replace"), button_id)
+                        return make(
+                            name_bytes.decode("utf-8", errors="replace"), button_id
+                        )
 
         # Format C: string (null-terminated) then int32 button_id.
         if len(data) >= 5:
@@ -175,7 +183,9 @@ class Skills:
                 name_bytes = reader.read(name_len)
                 if len(name_bytes) != name_len:
                     break
-                name = name_bytes.decode("utf-8", errors="replace").strip("\x00").strip()
+                name = (
+                    name_bytes.decode("utf-8", errors="replace").strip("\x00").strip()
+                )
                 info = SkillInfo(skill_id=skill_id, name=name, button_id=button_id)
                 cls._skills.append(info)
                 cls._skill_map[info.name.lower()] = info

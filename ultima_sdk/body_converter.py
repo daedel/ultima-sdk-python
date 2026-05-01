@@ -10,6 +10,7 @@ Ported from NerdyGamers/UOPython (bodies.py) with adaptations:
   - Type annotations throughout
   - ``get_true_body`` reverse-lookup preserved
 """
+
 from __future__ import annotations
 
 from typing import Optional
@@ -53,7 +54,7 @@ class BodyConverter:
                     continue
                 fields = line.split()
                 try:
-                    orig  = int(fields[0]) if len(fields) > 0 else -1
+                    orig = int(fields[0]) if len(fields) > 0 else -1
                     anim2 = int(fields[1]) if len(fields) > 1 else -1
                     anim3 = int(fields[2]) if len(fields) > 2 else -1
                     anim4 = int(fields[3]) if len(fields) > 3 else -1
@@ -156,7 +157,9 @@ class BodyTableEntry:
         self.new_hue = new_hue
 
     def __repr__(self) -> str:  # pragma: no cover
-        return f"BodyTableEntry(old={self.old_id}, new={self.new_id}, hue={self.new_hue})"
+        return (
+            f"BodyTableEntry(old={self.old_id}, new={self.new_id}, hue={self.new_hue})"
+        )
 
 
 class BodyTable:
@@ -179,13 +182,13 @@ class BodyTable:
                     i1 = line.index("{")
                     i2 = line.index("}")
                     param1 = line[:i1].strip()
-                    param2 = line[i1 + 1:i2].strip()
-                    param3 = line[i2 + 1:].strip()
+                    param2 = line[i1 + 1 : i2].strip()
+                    param3 = line[i2 + 1 :].strip()
                     if "," in param2:
-                        param2 = param2[:param2.index(",")].strip()
+                        param2 = param2[: param2.index(",")].strip()
                     orig_id = int(param1)
                     repl_id = int(param2)
-                    hue     = int(param3)
+                    hue = int(param3)
                     cls._entries[orig_id] = BodyTableEntry(orig_id, repl_id, hue)
                 except (ValueError, IndexError):
                     continue

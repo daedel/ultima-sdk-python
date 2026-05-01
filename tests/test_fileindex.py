@@ -1,6 +1,7 @@
 """Tests for file_index module."""
 
 import pytest
+
 # from pathlib import Path
 from ultima_sdk.file_index import FileIndex, FileIndexEntry
 from ultima_sdk.exceptions import FileParseError
@@ -16,10 +17,13 @@ class TestFileIndexEntry:
         assert entry.length == 50
         assert entry.extra == 0
 
-    @pytest.mark.parametrize("offset,length,extra", [
-        (-1, 50, 0),  # Negative offset
-        (100, -1, 0),  # Negative length
-    ])
+    @pytest.mark.parametrize(
+        "offset,length,extra",
+        [
+            (-1, 50, 0),  # Negative offset
+            (100, -1, 0),  # Negative length
+        ],
+    )
     def test_invalid_values(self, offset: int, length: int, extra: int) -> None:
         """Test invalid offset/length raises ValueError."""
         with pytest.raises(ValueError):
@@ -33,7 +37,7 @@ class TestFileIndex:
     def sample_index_data(self) -> bytes:
         """Sample binary data for index."""
         # Mock 3 entries: offset=0, length=100, extra=0; etc.
-        return b'\x00\x00\x00\x00\x64\x00\x00\x00\x00\x00\x00\x00' * 3
+        return b"\x00\x00\x00\x00\x64\x00\x00\x00\x00\x00\x00\x00" * 3
 
     def test_load_from_bytes(self, sample_index_data: bytes) -> None:
         """Test loading index from bytes."""
@@ -47,7 +51,7 @@ class TestFileIndex:
         """Test loading invalid data raises FileParseError."""
         index = FileIndex()
         with pytest.raises(FileParseError):
-            index.load_from_bytes(b'invalid')
+            index.load_from_bytes(b"invalid")
 
     def test_get_entry(self, sample_index_data: bytes) -> None:
         """Test retrieving an entry by index."""

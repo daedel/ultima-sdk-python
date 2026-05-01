@@ -18,7 +18,11 @@ def main() -> int:
     parser.add_argument("--id", type=int, default=0, help="Multi id (default: 0)")
     args = parser.parse_args()
 
-    init_files(resolve_uo_root(args.uo_root), require=True, require_any=("multi.mul", "multi.idx"))
+    init_files(
+        resolve_uo_root(args.uo_root),
+        require=True,
+        require_any=("multi.mul", "multi.idx"),
+    )
     Multis.initialize()
 
     m = Multis.get_multi(int(args.id))
@@ -28,7 +32,9 @@ def main() -> int:
 
     print(f"Multi {m.multi_id} components: {len(m.components)}")
     for c in m.components[:10]:
-        print(f"  item=0x{c.item_id:04X} x={c.x} y={c.y} z={c.z} flags={c.flags} unk1={c.unk1}")
+        print(
+            f"  item=0x{c.item_id:04X} x={c.x} y={c.y} z={c.z} flags={c.flags} unk1={c.unk1}"
+        )
     return 0
 
 

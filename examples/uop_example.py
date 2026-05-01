@@ -17,8 +17,7 @@ def _format_virtual_name(pattern: str, entry_id: int) -> str:
     # The SDK accepts C#-style patterns like "{0:D8}".
     # For this tiny example, implement just the common D8/D6 substitutions.
     return (
-        pattern
-        .replace("{0:D8}", f"{int(entry_id):08d}")
+        pattern.replace("{0:D8}", f"{int(entry_id):08d}")
         .replace("{0:D6}", f"{int(entry_id):06d}")
         .replace("{0}", str(int(entry_id)))
     )

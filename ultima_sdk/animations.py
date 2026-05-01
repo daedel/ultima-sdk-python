@@ -74,18 +74,28 @@ class Animations:
             cls._body_def = None
 
             # Load whichever anim sets exist under Files.
-            for file_type, base in [(1, "anim"), (2, "anim2"), (3, "anim3"), (4, "anim4"), (5, "anim5")]:
+            for file_type, base in [
+                (1, "anim"),
+                (2, "anim2"),
+                (3, "anim3"),
+                (4, "anim4"),
+                (5, "anim5"),
+            ]:
                 idx_path = Files.get_file_path(f"{base}.idx")
                 mul_path = Files.get_file_path(f"{base}.mul")
                 if not idx_path or not mul_path:
                     continue
-                cls._index_sets[file_type] = FileIndex(idx_path, mul_path, file_id=VERDATA_IDS.ANIM_MUL)
+                cls._index_sets[file_type] = FileIndex(
+                    idx_path, mul_path, file_id=VERDATA_IDS.ANIM_MUL
+                )
 
             # Load .def translation tables if present.
             bodyconv_path = Files.get_file_path("bodyconv.def")
             if bodyconv_path:
                 try:
-                    with open(bodyconv_path, "r", encoding="utf-8", errors="ignore") as f:
+                    with open(
+                        bodyconv_path, "r", encoding="utf-8", errors="ignore"
+                    ) as f:
                         cls._body_conv = BodyConvDef.from_text(f.read())
                 except Exception:
                     cls._body_conv = None
@@ -93,7 +103,9 @@ class Animations:
             bodydef_path = Files.get_file_path("body.def")
             if bodydef_path:
                 try:
-                    with open(bodydef_path, "r", encoding="utf-8", errors="ignore") as f:
+                    with open(
+                        bodydef_path, "r", encoding="utf-8", errors="ignore"
+                    ) as f:
                         cls._body_def = BodyDef.from_text(f.read())
                 except Exception:
                     cls._body_def = None
@@ -104,7 +116,9 @@ class Animations:
             raise FileAccessException(f"Failed to initialize animations: {e}")
 
     @classmethod
-    def get_animation(cls, body: int, action: int, direction: int) -> Optional[AnimationData]:
+    def get_animation(
+        cls, body: int, action: int, direction: int
+    ) -> Optional[AnimationData]:
         """Get animation data."""
         if not cls._initialized:
             cls.initialize()
@@ -135,7 +149,9 @@ class Animations:
         if not raw:
             return None
 
-        anim = AnimationData(body_id=int(body), action=int(action), direction=int(direction))
+        anim = AnimationData(
+            body_id=int(body), action=int(action), direction=int(direction)
+        )
         try:
             anim.frames = cls._decode_animation_entry(raw)
         except FileParseError:

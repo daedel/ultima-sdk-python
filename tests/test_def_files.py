@@ -41,8 +41,12 @@ def _reset_animations_state() -> None:
 
 def test_bodyconv_def_selects_anim2_set(tmp_path):
     # anim and anim2 both exist with different pixel values; bodyconv.def forces anim2.
-    _write_single_entry_idx_mul(tmp_path, "anim", _build_single_frame_anim_entry(0x1111))
-    _write_single_entry_idx_mul(tmp_path, "anim2", _build_single_frame_anim_entry(0x2222))
+    _write_single_entry_idx_mul(
+        tmp_path, "anim", _build_single_frame_anim_entry(0x1111)
+    )
+    _write_single_entry_idx_mul(
+        tmp_path, "anim2", _build_single_frame_anim_entry(0x2222)
+    )
 
     (tmp_path / "bodyconv.def").write_text("0\t0\t-1\t-1\t-1\n", encoding="utf-8")
 
@@ -57,7 +61,9 @@ def test_bodyconv_def_selects_anim2_set(tmp_path):
 
 def test_body_def_translates_requested_body(tmp_path):
     # Requesting body=5 translates to body=0, letting us keep a tiny idx fixture.
-    _write_single_entry_idx_mul(tmp_path, "anim", _build_single_frame_anim_entry(0x7FFF))
+    _write_single_entry_idx_mul(
+        tmp_path, "anim", _build_single_frame_anim_entry(0x7FFF)
+    )
 
     (tmp_path / "body.def").write_text("5 { 0 }\n", encoding="utf-8")
 

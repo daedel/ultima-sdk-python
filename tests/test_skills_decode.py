@@ -5,7 +5,9 @@ from ultima_sdk.skills import Skills
 
 def _make_indexed_record(name: str, button_id: int) -> bytes:
     name_bytes = name.encode("utf-8")
-    return struct.pack("<H", len(name_bytes)) + name_bytes + struct.pack("<i", button_id)
+    return (
+        struct.pack("<H", len(name_bytes)) + name_bytes + struct.pack("<i", button_id)
+    )
 
 
 def test_skills_loads_from_idx_mul(tmp_path):

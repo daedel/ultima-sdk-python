@@ -10,7 +10,13 @@ from pathlib import Path
 
 from ultima_sdk.sound import Sound
 
-from ._common import add_out_arg, add_uo_root_arg, ensure_out_dir, init_files, resolve_uo_root
+from ._common import (
+    add_out_arg,
+    add_uo_root_arg,
+    ensure_out_dir,
+    init_files,
+    resolve_uo_root,
+)
 
 
 def main() -> int:

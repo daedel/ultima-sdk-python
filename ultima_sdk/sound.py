@@ -29,7 +29,9 @@ class Sound:
     _initialized = False
 
     @classmethod
-    def initialize(cls, idx_path: str | None = None, mul_path: str | None = None) -> bool:
+    def initialize(
+        cls, idx_path: str | None = None, mul_path: str | None = None
+    ) -> bool:
         """Initialize sound index."""
         if cls._initialized:
             return True
@@ -45,7 +47,9 @@ class Sound:
             if idx_path and mul_path:
                 from .file_index import FileIndex
 
-                cls._index = FileIndex(idx_path, mul_path, file_id=VERDATA_IDS.SOUND_MUL)
+                cls._index = FileIndex(
+                    idx_path, mul_path, file_id=VERDATA_IDS.SOUND_MUL
+                )
                 cls._initialized = True
                 return True
 
@@ -128,7 +132,9 @@ class Sound:
             # Parse a human-ish name only for plausible prefixes.
             prefix = raw[:off]
             decoded = cls._decode_name(prefix)
-            if decoded and (".wav" in decoded.lower() or decoded.replace("_", "").isalnum()):
+            if decoded and (
+                ".wav" in decoded.lower() or decoded.replace("_", "").isalnum()
+            ):
                 name = decoded
 
             # Score raw[off:] as PCM, and raw[off+32:] in case there's a small header.
@@ -195,7 +201,13 @@ class Sound:
         return unique
 
     @staticmethod
-    def _wrap_pcm_as_wav(pcm: bytes, *, sample_rate: int = 22050, channels: int = 1, bits_per_sample: int = 16) -> bytes:
+    def _wrap_pcm_as_wav(
+        pcm: bytes,
+        *,
+        sample_rate: int = 22050,
+        channels: int = 1,
+        bits_per_sample: int = 16,
+    ) -> bytes:
         """Wrap raw PCM bytes as a minimal RIFF/WAVE container."""
         if pcm is None:
             pcm = b""
@@ -212,7 +224,15 @@ class Sound:
         fmt = (
             b"fmt "
             + struct.pack("<I", 16)
-            + struct.pack("<HHIIHH", 1, channels, sample_rate, byte_rate, block_align, bits_per_sample)
+            + struct.pack(
+                "<HHIIHH",
+                1,
+                channels,
+                sample_rate,
+                byte_rate,
+                block_align,
+                bits_per_sample,
+            )
         )
         data = b"data" + struct.pack("<I", len(pcm)) + pcm
         riff_payload = b"WAVE" + fmt + data

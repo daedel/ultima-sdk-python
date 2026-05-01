@@ -38,7 +38,9 @@ class Textures:
     _initialized = False
 
     @classmethod
-    def initialize(cls, idx_path: str | None = None, mul_path: str | None = None) -> bool:
+    def initialize(
+        cls, idx_path: str | None = None, mul_path: str | None = None
+    ) -> bool:
         """Initialize texture index."""
         if cls._initialized:
             return True
@@ -53,7 +55,9 @@ class Textures:
                 from .file_index import FileIndex
                 from .verdata_ids import IDS as VERDATA_IDS
 
-                cls._index = FileIndex(idx_path, mul_path, file_id=VERDATA_IDS.TEXMAPS_MUL)
+                cls._index = FileIndex(
+                    idx_path, mul_path, file_id=VERDATA_IDS.TEXMAPS_MUL
+                )
                 cls._initialized = True
                 return True
         except Exception as e:
@@ -75,7 +79,9 @@ class Textures:
             return None
 
         width, height, pixels = cls._decode_texture(raw)
-        return TextureData(texture_id=texture_id, width=width, height=height, pixels=pixels)
+        return TextureData(
+            texture_id=texture_id, width=width, height=height, pixels=pixels
+        )
 
     @classmethod
     def save_png(cls, texture_id: int, path) -> bool:

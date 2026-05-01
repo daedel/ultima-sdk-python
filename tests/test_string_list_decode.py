@@ -4,7 +4,9 @@ from ultima_sdk.files import Files
 from ultima_sdk.string_list import StringList
 
 
-def _build_cliloc_bytes(entries: dict[int, str], *, header_variant: str = "v2_lang") -> bytes:
+def _build_cliloc_bytes(
+    entries: dict[int, str], *, header_variant: str = "v2_lang"
+) -> bytes:
     # Common header variants observed in clients:
     # - 6 bytes: int32 version + int16 language/unknown
     # - 4 bytes: int32 version
@@ -28,7 +30,9 @@ def _build_cliloc_bytes(entries: dict[int, str], *, header_variant: str = "v2_la
 
 def test_string_list_loads_cliloc_enu_from_files_dir(tmp_path):
     d = tmp_path
-    (d / "cliloc.enu").write_bytes(_build_cliloc_bytes({1000: "Hello", 1001: "World"}, header_variant="v2_lang"))
+    (d / "cliloc.enu").write_bytes(
+        _build_cliloc_bytes({1000: "Hello", 1001: "World"}, header_variant="v2_lang")
+    )
 
     Files.set_directory(str(d))
     assert StringList.initialize() is True

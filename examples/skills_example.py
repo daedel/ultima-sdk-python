@@ -26,7 +26,9 @@ def main() -> int:
             print(f"Skill[{i}] name={info.name!r} button={info.button_id}")
 
     find = Skills.find_skill("magery")
-    print("Find 'magery':", getattr(find, "skill_id", None), getattr(find, "name", None))
+    print(
+        "Find 'magery':", getattr(find, "skill_id", None), getattr(find, "name", None)
+    )
     return 0
 
 

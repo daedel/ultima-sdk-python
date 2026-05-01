@@ -17,7 +17,9 @@ def main() -> int:
     add_uo_root_arg(parser)
     args = parser.parse_args()
 
-    init_files(resolve_uo_root(args.uo_root), require=True, require_any=("skillgrp.mul",))
+    init_files(
+        resolve_uo_root(args.uo_root), require=True, require_any=("skillgrp.mul",)
+    )
     SkillGroups.initialize()
 
     i = 0

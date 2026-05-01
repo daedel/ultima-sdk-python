@@ -37,7 +37,9 @@ class LightData:
         expected_i8 = self.width * self.height
 
         if len(self.pixels) == expected_uo16:
-            return image_from_pixels(self.width, self.height, self.pixels, format_hint="UO16")
+            return image_from_pixels(
+                self.width, self.height, self.pixels, format_hint="UO16"
+            )
 
         if len(self.pixels) == expected_i8:
             rgba = bytearray(self.width * self.height * 4)
@@ -48,7 +50,9 @@ class LightData:
                 rgba[j + 2] = 0xFF
                 rgba[j + 3] = intensity
                 j += 4
-            return image_from_pixels(self.width, self.height, bytes(rgba), format_hint="RGBA")
+            return image_from_pixels(
+                self.width, self.height, bytes(rgba), format_hint="RGBA"
+            )
 
         raise FileParseError("Unsupported light pixel buffer length")
 
@@ -61,7 +65,9 @@ class Light:
     _initialized = False
 
     @classmethod
-    def initialize(cls, idx_path: str | None = None, mul_path: str | None = None) -> bool:
+    def initialize(
+        cls, idx_path: str | None = None, mul_path: str | None = None
+    ) -> bool:
         """Initialize light data."""
         if cls._initialized:
             return True

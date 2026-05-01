@@ -18,9 +18,7 @@ def test_equipconv_global_mapping(tmp_path):
 
 def test_equipconv_per_body_overrides_global(tmp_path):
     (tmp_path / "equipconv.def").write_text(
-        "# body-specific mapping wins\n"
-        "0x2006 0x3000\n"
-        "400 0x2006 0x4000\n",
+        "# body-specific mapping wins\n" "0x2006 0x3000\n" "400 0x2006 0x4000\n",
         encoding="utf-8",
     )
 

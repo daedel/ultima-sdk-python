@@ -183,7 +183,9 @@ class BodyDef:
     def try_translate_body(self, body: int) -> Optional[int]:
         return self._map.get(body)
 
-    def translate_body_and_hue(self, body: int, hue: Optional[int]) -> Tuple[int, Optional[int]]:
+    def translate_body_and_hue(
+        self, body: int, hue: Optional[int]
+    ) -> Tuple[int, Optional[int]]:
         # Hue rules vary by client; we only guarantee body translation.
         return (self.translate_body(body), hue)
 
@@ -244,7 +246,9 @@ class EquipConvDef:
                 continue
             self._global[old_id] = new_id
 
-    def try_convert(self, item_id: int, *, body_id: Optional[int] = None) -> Optional[int]:
+    def try_convert(
+        self, item_id: int, *, body_id: Optional[int] = None
+    ) -> Optional[int]:
         if body_id is not None:
             m = self._by_body.get(int(body_id))
             if m is not None and int(item_id) in m:

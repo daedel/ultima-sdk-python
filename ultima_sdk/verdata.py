@@ -72,7 +72,9 @@ class Verdata:
             entries: Dict[Tuple[int, int], VerdataEntry] = {}
             for i in range(count):
                 off = table_off + (i * 20)
-                file_id, block_id, data_off, length, extra = struct.unpack_from("<iiiii", raw, off)
+                file_id, block_id, data_off, length, extra = struct.unpack_from(
+                    "<iiiii", raw, off
+                )
                 if length <= 0 or data_off < 0:
                     continue
                 entries[(int(file_id), int(block_id))] = VerdataEntry(
@@ -89,7 +91,9 @@ class Verdata:
         except FileParseError:
             raise
         except Exception as e:
-            raise FileAccessException("Failed to initialize verdata", file_path=path, cause=e)
+            raise FileAccessException(
+                "Failed to initialize verdata", file_path=path, cause=e
+            )
 
     @classmethod
     def is_initialized(cls) -> bool:
@@ -122,7 +126,9 @@ class Verdata:
                 f.seek(entry.offset)
                 data = f.read(entry.length)
         except Exception as e:
-            raise FileAccessException("Failed to read verdata patch", file_path=cls._path, cause=e)
+            raise FileAccessException(
+                "Failed to read verdata patch", file_path=cls._path, cause=e
+            )
 
         if data is None or len(data) != entry.length:
             raise FileParseError("Truncated verdata patch", file_path=cls._path)

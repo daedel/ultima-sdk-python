@@ -41,7 +41,9 @@ class Gumps:
     _initialized = False
 
     @classmethod
-    def initialize(cls, idx_path: str | None = None, mul_path: str | None = None) -> bool:
+    def initialize(
+        cls, idx_path: str | None = None, mul_path: str | None = None
+    ) -> bool:
         """Initialize gump index."""
         if cls._initialized:
             return True
@@ -57,7 +59,9 @@ class Gumps:
             if idx_path and mul_path:
                 from .file_index import FileIndex
 
-                cls._index = FileIndex(idx_path, mul_path, file_id=VERDATA_IDS.GUMPART_MUL)
+                cls._index = FileIndex(
+                    idx_path, mul_path, file_id=VERDATA_IDS.GUMPART_MUL
+                )
                 cls._initialized = True
                 return True
 
@@ -179,7 +183,7 @@ class Gumps:
                     end_x = min(width, x + run)
                     for xi in range(x, end_x):
                         out_index = (y * width + xi) * 2
-                        out[out_index:out_index + 2] = struct.pack("<H", color)
+                        out[out_index : out_index + 2] = struct.pack("<H", color)
                     x += run
 
             return bytes(out)

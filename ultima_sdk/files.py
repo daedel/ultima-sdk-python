@@ -16,43 +16,142 @@ class Files:
 
     # List of all known Ultima Online data files
     UO_FILES = [
-        "anim.idx", "anim.mul", "anim2.idx", "anim2.mul", "anim3.idx", "anim3.mul",
-        "anim4.idx", "anim4.mul", "anim5.idx", "anim5.mul", "animdata.mul",
-        "art.mul", "artidx.mul", "artlegacymul.uop",
-        "body.def", "bodyconv.def", "client.exe",
-        "cliloc.custom1", "cliloc.custom2", "cliloc.deu", "cliloc.enu",
+        "anim.idx",
+        "anim.mul",
+        "anim2.idx",
+        "anim2.mul",
+        "anim3.idx",
+        "anim3.mul",
+        "anim4.idx",
+        "anim4.mul",
+        "anim5.idx",
+        "anim5.mul",
+        "animdata.mul",
+        "art.mul",
+        "artidx.mul",
+        "artlegacymul.uop",
+        "body.def",
+        "bodyconv.def",
+        "client.exe",
+        "cliloc.custom1",
+        "cliloc.custom2",
+        "cliloc.deu",
+        "cliloc.enu",
         "equipconv.def",
-        "facet00.mul", "facet01.mul", "facet02.mul", "facet03.mul", "facet04.mul", "facet05.mul",
+        "facet00.mul",
+        "facet01.mul",
+        "facet02.mul",
+        "facet03.mul",
+        "facet04.mul",
+        "facet05.mul",
         "fonts.mul",
-        "gump.def", "gumpart.mul", "gumpidx.mul", "gumpartlegacymul.uop",
-        "hues.mul", "light.mul", "lightidx.mul",
-        "map0.mul", "map1.mul", "map2.mul", "map3.mul", "map4.mul", "map5.mul",
-        "map6.mul", "map7.mul", "map8.mul", "map9.mul", "map10.mul",
-        "map0legacymul.uop", "map1legacymul.uop", "map2legacymul.uop", "map3legacymul.uop",
-        "map4legacymul.uop", "map5legacymul.uop", "map6legacymul.uop", "map7legacymul.uop",
-        "map8legacymul.uop", "map9legacymul.uop", "map10legacymul.uop",
-        "mapdif0.mul", "mapdif1.mul", "mapdif2.mul", "mapdif3.mul", "mapdif4.mul",
-        "mapdifl0.mul", "mapdifl1.mul", "mapdifl2.mul", "mapdifl3.mul", "mapdifl4.mul",
+        "gump.def",
+        "gumpart.mul",
+        "gumpidx.mul",
+        "gumpartlegacymul.uop",
+        "hues.mul",
+        "light.mul",
+        "lightidx.mul",
+        "map0.mul",
+        "map1.mul",
+        "map2.mul",
+        "map3.mul",
+        "map4.mul",
+        "map5.mul",
+        "map6.mul",
+        "map7.mul",
+        "map8.mul",
+        "map9.mul",
+        "map10.mul",
+        "map0legacymul.uop",
+        "map1legacymul.uop",
+        "map2legacymul.uop",
+        "map3legacymul.uop",
+        "map4legacymul.uop",
+        "map5legacymul.uop",
+        "map6legacymul.uop",
+        "map7legacymul.uop",
+        "map8legacymul.uop",
+        "map9legacymul.uop",
+        "map10legacymul.uop",
+        "mapdif0.mul",
+        "mapdif1.mul",
+        "mapdif2.mul",
+        "mapdif3.mul",
+        "mapdif4.mul",
+        "mapdifl0.mul",
+        "mapdifl1.mul",
+        "mapdifl2.mul",
+        "mapdifl3.mul",
+        "mapdifl4.mul",
         "mobtypes.txt",
-        "multi.idx", "multi.mul", "multimap.rle",
+        "multi.idx",
+        "multi.mul",
+        "multimap.rle",
         "radarcol.mul",
         "skillgrp.mul",
-        "skills.idx", "skills.mul",
-        "sound.def", "sound.mul", "soundidx.mul", "soundlegacymul.uop",
+        "skills.idx",
+        "skills.mul",
+        "sound.def",
+        "sound.mul",
+        "soundidx.mul",
+        "soundlegacymul.uop",
         "speech.mul",
-        "stadif0.mul", "stadif1.mul", "stadif2.mul", "stadif3.mul", "stadif4.mul",
-        "stadifi0.mul", "stadifi1.mul", "stadifi2.mul", "stadifi3.mul", "stadifi4.mul",
-        "stadifl0.mul", "stadifl1.mul", "stadifl2.mul", "stadifl3.mul", "stadifl4.mul",
-        "staidx0.mul", "staidx1.mul", "staidx2.mul", "staidx3.mul", "staidx4.mul",
-        "staidx5.mul", "staidx6.mul", "staidx7.mul", "staidx8.mul", "staidx9.mul", "staidx10.mul",
-        "statics0.mul", "statics1.mul", "statics2.mul", "statics3.mul", "statics4.mul", "statics5.mul",
-        "statics6.mul", "statics7.mul", "statics8.mul", "statics9.mul", "statics10.mul",
-        "texidx.mul", "texmaps.mul",
+        "stadif0.mul",
+        "stadif1.mul",
+        "stadif2.mul",
+        "stadif3.mul",
+        "stadif4.mul",
+        "stadifi0.mul",
+        "stadifi1.mul",
+        "stadifi2.mul",
+        "stadifi3.mul",
+        "stadifi4.mul",
+        "stadifl0.mul",
+        "stadifl1.mul",
+        "stadifl2.mul",
+        "stadifl3.mul",
+        "stadifl4.mul",
+        "staidx0.mul",
+        "staidx1.mul",
+        "staidx2.mul",
+        "staidx3.mul",
+        "staidx4.mul",
+        "staidx5.mul",
+        "staidx6.mul",
+        "staidx7.mul",
+        "staidx8.mul",
+        "staidx9.mul",
+        "staidx10.mul",
+        "statics0.mul",
+        "statics1.mul",
+        "statics2.mul",
+        "statics3.mul",
+        "statics4.mul",
+        "statics5.mul",
+        "statics6.mul",
+        "statics7.mul",
+        "statics8.mul",
+        "statics9.mul",
+        "statics10.mul",
+        "texidx.mul",
+        "texmaps.mul",
         "tiledata.mul",
-        "unifont.mul", "unifont1.mul", "unifont2.mul", "unifont3.mul", "unifont4.mul",
-        "unifont5.mul", "unifont6.mul", "unifont7.mul", "unifont8.mul", "unifont9.mul",
-        "unifont10.mul", "unifont11.mul", "unifont12.mul",
-        "uotd.exe", "verdata.mul"
+        "unifont.mul",
+        "unifont1.mul",
+        "unifont2.mul",
+        "unifont3.mul",
+        "unifont4.mul",
+        "unifont5.mul",
+        "unifont6.mul",
+        "unifont7.mul",
+        "unifont8.mul",
+        "unifont9.mul",
+        "unifont10.mul",
+        "unifont11.mul",
+        "unifont12.mul",
+        "uotd.exe",
+        "verdata.mul",
     ]
 
     # Registry keys to check (Windows only)
@@ -100,13 +199,17 @@ class Files:
             # confirm we found at least one file
             if any(v for v in cls._mul_path.values()):
                 return True
-            warnings.warn(f"No known UO data files found in provided directory: {root_dir}")
+            warnings.warn(
+                f"No known UO data files found in provided directory: {root_dir}"
+            )
             return False
 
         cls._directory = cls._load_directory()
         if not cls._directory:
-            warnings.warn("Could not auto-detect Ultima Online directory. "
-                          "Call Files.set_directory(path) or set UO_ROOT environment variable.")
+            warnings.warn(
+                "Could not auto-detect Ultima Online directory. "
+                "Call Files.set_directory(path) or set UO_ROOT environment variable."
+            )
             # leave _mul_path empty to make failure explicit
             cls._mul_path = {}
             cls._root_dir = ""
@@ -191,8 +294,10 @@ class Files:
                 pass
 
             if not cls._mul_path:
-                warnings.warn("Files.get_file_path() called before UO data path was set. "
-                              "Call Files.set_directory(path) or Files.initialize(path).")
+                warnings.warn(
+                    "Files.get_file_path() called before UO data path was set. "
+                    "Call Files.set_directory(path) or Files.initialize(path)."
+                )
                 return None
 
         key = file.lower()
@@ -287,7 +392,10 @@ class Files:
 
                 access_flags = [winreg.KEY_READ]
                 # On 64-bit Windows, UO entries are often under the 32-bit view.
-                for view_flag in (getattr(winreg, "KEY_WOW64_32KEY", 0), getattr(winreg, "KEY_WOW64_64KEY", 0)):
+                for view_flag in (
+                    getattr(winreg, "KEY_WOW64_32KEY", 0),
+                    getattr(winreg, "KEY_WOW64_64KEY", 0),
+                ):
                     if view_flag:
                         access_flags.append(winreg.KEY_READ | view_flag)
 
@@ -318,7 +426,9 @@ class Files:
                                         )
                                         continue
             except Exception as e:
-                warnings.warn(f"Registry access failed while detecting UO directory: {e}")
+                warnings.warn(
+                    f"Registry access failed while detecting UO directory: {e}"
+                )
 
         # Try common paths
         pf = os.environ.get("Program Files")
@@ -339,7 +449,10 @@ class Files:
                     Path(base) / "Ultima Online",
                     Path(base) / "Ultima Online Classic",
                     Path(base) / "EA Games" / "Ultima Online Classic",
-                    Path(base) / "Electronic Arts" / "EA Games" / "Ultima Online Classic",
+                    Path(base)
+                    / "Electronic Arts"
+                    / "EA Games"
+                    / "Ultima Online Classic",
                     Path(base) / "Origin Games" / "Ultima Online",
                 ]
             )

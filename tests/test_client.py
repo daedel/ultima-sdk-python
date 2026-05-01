@@ -21,14 +21,18 @@ class TestUltimaClient:
         assert client.file_index is None
 
     @patch("ultima_sdk.client.Path.exists")
-    def test_validate_client_path_exists(self, mock_exists, client: UltimaClient) -> None:
+    def test_validate_client_path_exists(
+        self, mock_exists, client: UltimaClient
+    ) -> None:
         """Test path validation when exists."""
         mock_exists.return_value = True
         client._validate_client_path()  # Assuming private method
         # No exception raised
 
     @patch("ultima_sdk.client.Path.exists")
-    def test_validate_client_path_not_exists(self, mock_exists, client: UltimaClient) -> None:
+    def test_validate_client_path_not_exists(
+        self, mock_exists, client: UltimaClient
+    ) -> None:
         """Test path validation when not exists."""
         mock_exists.return_value = False
         with pytest.raises(FileNotFoundError):
