@@ -1,399 +1,287 @@
-# Ultima-SDK-Python
+![PyPI Python Version](https://img.shields.io/pypi/pyversions/ultima-sdk-python)
+[![GitHub license](https://img.shields.io/github/license/UltimaWorks/ultima-sdk-python)](LICENSE)
+[![GitHub last commit](https://img.shields.io/github/last-commit/UltimaWorks/ultima-sdk-python)](https://github.com/UltimaWorks/ultima-sdk-python/commits/main)
 
-[Project on GitHub](https://github.com/UltimaWorks/ultima-sdk-python/)
+# Ultima SDK Python
 
-## Index
+A comprehensive 1:1 Python conversion of the C# Ultima Online SDK. This library provides full read access to Ultima Online client data files (`.mul`, `.idx`, and UOP formats) for use in tools, servers, and modding pipelines.
 
-- [Ultima-SDK-Python](#ultima-sdk-python)
-  - [Index](#index)
-  - [Wiki](#wiki)
-  - [Installation](#installation)
-  - [Quick Start](#quick-start)
-  - [Module Reference](#module-reference)
-    - [Files](#files)
-    - [TileData](#tiledata)
-    - [Hues](#hues)
-    - [Client](#client)
-    - [Art, Animations, Gumps, Sound](#art-animations-gumps-sound)
-    - [Map](#map)
-    - [Skills](#skills)
-  - [File Structure](#file-structure)
-  - [API Design](#api-design)
-  - [Platform Support](#platform-support)
-  - [License](#license)
-  - [Contributing](#contributing)
-  - [Original C# SDK](#original-c-sdk)
-  - [Support](#support)
+## Features
 
-A comprehensive 1:1 conversion of the C# Ultima Online SDK into pure Python.
-
-This SDK provides full access to Ultima Online client data files, including:
-
-- Art and graphics (static items, gumps, light sources)
-- Animations and character data
-- Tile data and map information
-- Sound and music files
-- Hue/color palette management
-- Client window interaction
-- Multi-tile object data (houses, ships)
-- String and skill information
-
-It also includes small, pragmatic helpers for rendering decoded pixel buffers
-to Pillow images (see "Rendering" below).
-
-## Wiki
-
-For detailed documentation, examples, and development guides, see the project [Wiki](https://github.com/UltimaWorks/ultima-sdk-python/wiki)
-
-Contents you'll find there:
-
-- Overview — project goals and compatibility notes
-- Getting Started — installation, configuration, and quick-start examples
-- Modules & API Reference — detailed docs for Files, Art, TileData, Hues, Map, Client, etc.
-- Tutorials — loading assets, reading maps, working with animations, and common use cases
-- Migration Guide — tips for translating C# SDK patterns to Python idioms
-- Contributing & Development — coding standards, tests, and how to run the test suite
-- Troubleshooting & FAQ — common issues and resolutions
-- Changelog & Releases — notable changes and upgrade notes
-
-If a topic is missing or outdated, please open an issue or submit a PR to improve the Wiki.
-
----
+- Full access to UO client data files: Art, Animations, Gumps, TileData, Hues, Map, and more
+- Support for both legacy `.mul/.idx` and modern `.uop` file formats
+- Built-in PNG rendering helpers via Pillow
+- Automatic client directory discovery on Windows (registry lookup)
+- Manifest-based override support for custom client data
+- Typed API with type hints throughout
+- Comprehensive test suite including mocked and real-client smoke tests
 
 ## Installation
 
+### From PyPI (coming soon)
+
 ```bash
+pip install ultima-sdk-python
+```
+
+### From Source
+
+```bash
+git clone https://github.com/UltimaWorks/ultima-sdk-python.git
+cd ultima-sdk-python
 pip install -e .
 ```
 
-Or install directly:
+### Requirements
 
-```bash
-python setup.py install
-```
-
----
+- **Python 3.10+**
+- **Pillow 10.0+**
+- An Ultima Online client installation (for reading `.mul`, `.idx`, and `.uop` files)
 
 ## Quick Start
 
 ```python
-from ultima_sdk import Files, Art, TileData, Hues, Animations
+from ultima_sdk import Files, TileData, Art, Animations, Hues
 
-# Initialize with your UO client directory
-Files.initialize("/path/to/Ultima Online")
+# Initialize file paths (auto-detects UO client on Windows)
+Files.initialize()  # or: Files.initialize("C:\\Ultima Online")
 
 # Load tile data
 TileData.initialize()
-land_tile = TileData.get_land_tile(0)
+land_tile = TileData.get_land_tile(0)  # Get grass tile
+static_tile = TileData.get_static_tile(3388)  # Get a static item
 
 # Load hues
 Hues.initialize()
-hue = Hues.get_hue(0)
+hue_0 = Hues.get_hue(0)  # Default hue
 
 # Load art
 Art.initialize()
-art = Art.get_art(0x4001)  # Example static item
+art = Art.get_art(0x4001)  # Load art by graphic ID
+if art:
+    img = art.to_image()  # Convert to PIL Image
+    img.save("output.png")
 
 # Load animations
 Animations.initialize()
 anim = Animations.get_animation(body=1, action=0, direction=0)
 ```
 
----
-
 ## Module Reference
 
 ### Files
 
-Manages Ultima Online data file paths and discovery.
-
-```python
-import os
-from ultima_sdk import Files
-
-def ensure_uo_directory():
-  # Try auto-discover; don't fail hard if it raises
-  try:
-    Files.initialize()
-  except Exception:
-    pass
-
-  # Check if a known file can be resolved
-  def has_known_file():
-    try:
-      art_path = Files.get_file_path("art.mul")
-    except Exception:
-      return False
-    return bool(art_path and os.path.exists(art_path))
-
-  if not has_known_file():
-    # Prompt user until a valid UO directory is provided
-    while True:
-      try:
-        user_dir = input("Ultima Online directory not found. Please enter the path to your UO client: ").strip()
-      except (KeyboardInterrupt, EOFError):
-        raise SystemExit("UO directory is required to continue.")
-
-      if not user_dir:
-        continue
-      if not os.path.isdir(user_dir):
-        print("Path does not exist or is not a directory. Try again.")
-        continue
-
-      # Basic validation for common UO files
-      valid = any(os.path.exists(os.path.join(user_dir, fn)) for fn in ("art.mul", "client.exe", "ultima.exe"))
-      if not valid:
-        print("Directory doesn't contain expected UO files (e.g. art.mul). Try again.")
-        continue
-
-      # Set directory in SDK and export to environment
-      Files.set_directory(user_dir)
-      os.environ["UO_ROOT"] = user_dir
-
-      # Re-run initialize in case SDK needs it
-      try:
-        Files.initialize()
-      except Exception:
-        pass
-
-      if has_known_file():
-        break
-      else:
-        print("Could not verify files after setting directory. Try again.")
-
-ensure_uo_directory()
-
-# Get file paths
-art_path = Files.get_file_path("art.mul")
-print("art.mul path:", art_path)
-```
-
-You can also require a path and get an explicit exception if it's missing:
+The `Files` class manages all UO client data file paths and discovery.
 
 ```python
 from ultima_sdk import Files
-from ultima_sdk.exceptions import FileAccessException
 
-try:
-  art_path = Files.require_file_path("art.mul")
-except FileAccessException as e:
-  print("Missing required file:", e)
-  # Prompt user or abort
+# Auto-detect client directory (Windows registry)
+Files.initialize()
 
+# Or specify manually
+Files.initialize("/path/to/ultima_online")
+
+# Check if a file exists
+if Files.file_exists("artidx.mul"):
+    print("Art index found!")
+
+# Get absolute path to a file
+art_path = Files.get_file_path("artidx.mul")
 ```
 
 ### TileData
 
-Access tile properties and static/dynamic item information.
+Reads `tiledata.mul` for land and static tile definitions.
 
 ```python
 from ultima_sdk import TileData
 
 TileData.initialize()
 
-# Get land tile
-land = TileData.get_land_tile(0)
-print(f"Land: {land['name']}, Flags: {hex(land['flags'])}")
+# Land tiles (ground textures)
+land = TileData.get_land_tile(0)  # Grass
+print(land.name, land.flags)
 
-# Get item tile
-item = TileData.get_item_tile(0x4001)
-print(f"Item: {item['name']}, Weight: {item['weight']}")
+# Static tiles (items, walls, furniture)
+static = TileData.get_static_tile(3388)  # Wooden chest
+print(static.name, static.height)
 ```
 
 ### Hues
 
-Access color palette and hue information.
+Reads `hues.mul` for color/shader data.
 
 ```python
 from ultima_sdk import Hues
 
 Hues.initialize()
-
-# Get specific hue
-hue = Hues.get_hue(0)
-
-# Get color from hue
-color = hue.get_color(0)
+hue = Hues.get_hue(1)  # Red hue
+print(hue.name)  # "Crimson"
 ```
 
-### Client
+### Art
 
-Interact with running Ultima Online client.
-
-```python
-from ultima_sdk import Client
-
-# Check if client is running
-if Client.is_running():
-    # Bring window to foreground
-    Client.bring_to_top()
-
-    # Send text to client
-    Client.send_text("hello world")
-```
-
-### Art, Animations, Gumps, Sound
-
-Load graphics and media assets.
+Reads `artidx.mul` / `art.mul` for static item graphics.
 
 ```python
-from ultima_sdk import Art, Animations, Gumps, Sound
+from ultima_sdk import Art
 
 Art.initialize()
-art_data = Art.get_art(graphic_id)
-
-Animations.initialize()
-anim = Animations.get_animation(body, action, direction)
-
-Gumps.initialize()
-gump = Gumps.get_gump(gump_id)
-
-Sound.initialize()
-sound = Sound.get_sound(sound_id)
+art = Art.get_art(0x4001)  # Load by graphic ID
+if art:
+    img = art.to_image()  # Returns PIL.Image
+    img.save("item.png")
 ```
 
-### Rendering
+### Animations
 
-Many UO assets store pixels as packed 16-bit colors or raw RGB/RGBA buffers.
-When you already have a decoded pixel buffer, you can convert it to a Pillow
-image using the helpers in `ultima_sdk.rendering`.
+Reads `anim.idx` / `anim.mul` and variant files for character/object animations.
 
 ```python
-from ultima_sdk.rendering import image_from_pixels
+from ultima_sdk import Animations
 
-# width/height known from the asset format
-img = image_from_pixels(width=44, height=44, pixels=pixel_bytes)
-img.save("out.png")
+Animations.initialize()
+# Get a single frame
+frame = Animations.get_animation(body=1, action=0, direction=0)
+
+# Export as GIF
+Animations.export_gif(1, 5, "character.gif")
 ```
 
-Some SDK objects also expose `to_image()` when they hold width/height/pixels
-(e.g. `ArtTile.to_image()` and `ArtData.to_image()`).
+### Gumps
+
+Reads `gumpidx.mul` / `gumpart.mul` for UI element graphics.
+
+```python
+from ultima_sdk import Gumps
+
+Gumps.initialize()
+gump = Gumps.get_gump(gump_id=0x829)
+if gump:
+    img = gump.to_image()
+```
 
 ### Map
 
-Access map and terrain data.
+Reads map data including statics, map markers, and multi-object placements.
 
 ```python
 from ultima_sdk import Map
 
 Map.initialize()
-
-map_data = Map.get_map(map_id=0)  # Felucca
-tile = map_data.get_tile(1000, 1000)
+# Get statics at a location
+statics = Map.get_statics(0, 1396, 819)  # Britain
+for s in statics:
+    print(s.item_id, s.x, s.y, s.z)
 ```
 
 ### Skills
 
-Access skill information.
+Reads `skills.def` for skill definitions.
 
 ```python
 from ultima_sdk import Skills
 
 Skills.initialize()
-
-skill = Skills.get_skill(0)  # Alchemy
-combat_skill = Skills.find_skill("Magery")
+for skill_id in range(150):
+    skill = Skills.get_skill(skill_id)
+    if skill:
+        print(f"{skill.name}: gainrate={skill.gain_rate}")
 ```
 
----
+### Rendering
+
+All art, animation, and gump objects have a `.to_image()` method that returns a `PIL.Image`.
+
+```python
+from ultima_sdk import Art
+
+Art.initialize()
+art = Art.get_art(0x4051)
+img = art.to_image()
+img.save("output.png")
+```
 
 ## File Structure
 
-```text
+```
 ultima-sdk-python/
-├── setup.py
+├── pyproject.toml
 ├── README.md
 ├── LICENSE
-├── MANIFEST.in
+├── .github/workflows/      # CI/CD pipelines
+├── examples/               # Usage examples for each module
+├── scripts/                # Utility scripts
+├── tests/                  # Test suite
 └── ultima_sdk/
-    ├── __init__.py
-    ├── exceptions.py
-    ├── binary_extensions.py
-    ├── files.py
-    ├── client.py
-    ├── tiledata.py
-    ├── hues.py
-    ├── art.py
-    ├── animations.py
-    ├── gumps.py
-    ├── sound.py
-    ├── light.py
-    ├── textures.py
-    ├── multis.py
-    ├── map.py
-    ├── skills.py
-    ├── animation_edit.py
-    ├── string_list.py
-    ├── radar_col.py
-    ├── skill_groups.py
-    ├── file_index.py
-    └── tile_matrix.py
+    ├── __init__.py         # Package entry point
+    ├── files.py            # File path management
+    ├── tiledata.py         # TileData.mul reader
+    ├── hues.py             # Hues.mul reader
+    ├── art.py              # Art graphics reader
+    ├── animations.py       # Animation reader
+    ├── gumps.py            # Gump graphics reader
+    ├── map.py              # Map data reader
+    ├── skills.py           # Skills.def reader
+    ├── multis.py           # Multi-object data
+    ├── textures.py         # Texture reader
+    ├── sound.py            # Sound/music reader
+    ├── uop.py              # UOP file format support
+    ├── verdata.py          # Version data (patching)
+    ├── rendering.py        # PIL image helpers
+    └── ...                 # Other utility modules
 ```
 
----
+## Examples
 
-## API Design
+The [`examples/`](examples/) directory contains runnable scripts for every major module:
 
-This SDK maintains API compatibility with the C# Ultima SDK while following Python idioms:
+| File | Description |
+|------|-------------|
+| `art_example.py` | Load and save art tiles as PNG |
+| `animations_gif_example.py` | Export animations to GIF |
+| `map_example.py` | Query static objects on a map |
+| `rendering_example.py` | Render art/animations to images |
+| `uop_example.py` | Work with UOP-format data files |
+| `verdata_example.py` | Apply patch data from verdata |
+| ... | See [examples/](examples/) for all 30+ examples |
 
-- Static utility classes use `@classmethod` decorators
-- Exceptions inherit from `UltimaSdkException`
-- Binary I/O uses `BinaryReader`/`BinaryWriter` helpers
-- File discovery uses platform-specific registry queries (Windows) and common paths
-- Lazy initialization pattern for resource-heavy modules
+## Tests
 
----
+```bash
+# Run all tests
+pytest -v
 
-## Implementation Status
+# Run with coverage
+pytest --cov=ultima_sdk --cov-report=term
 
-This project aims for a 1:1 API surface with the original C# SDK, but not every
-module has full file decoding implemented yet.
-
-- **Art**: Reads `artidx.mul` + `art.mul` and decodes common static art encodings; use `Art.get_art(...).to_image()` or `ultima_sdk.rendering.image_from_pixels()`.
-- **Rendering helpers**: Basic Pillow conversions for RGB/RGBA and common UO 16-bit 5-5-5 buffers.
-- **Other modules**: Many expose paths and/or placeholders; decoding work is ongoing (gumps → maps/statics → animations).
-
----
+# Run a specific test module
+pytest tests/test_art.py -v
+```
 
 ## Platform Support
 
-- **Windows**: Full support including registry-based client discovery
-- **Linux/macOS**: Supported with manual directory configuration
-
----
+| Platform | Support | Notes |
+|----------|---------|-------|
+| Windows | Full | Auto-detection via registry |
+| Linux | Supported | Manual path configuration |
+| macOS | Supported | Manual path configuration |
 
 ## License
 
-Pickled License - See LICENSE file for details
-
----
+Written under the Pickleware License. See [LICENSE](LICENSE) for full terms.
 
 ## Contributing
 
-Contributions welcome! Please follow PEP 8 style guidelines and add tests for new features.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, code standards, and the PR workflow.
 
-### Tests
+## Related Projects
 
-Run the full test suite:
-
-```bash
-pytest -q
-```
-
-Optional real-world UOP regression tests are marked as `slow` and are skipped unless explicitly enabled:
-
-```powershell
-$env:ULTIMA_SDK_REAL_UOP_TESTS="1"; pytest -q -m slow
-```
-
----
-
-## Original C# SDK
-
-This is a conversion of the Ultima SDK originally developed for the UoFiddler project: [UOFiddler](https://github.com/jedi661/UoFiddlerPixel)
-
----
+- [UOFiddler](https://github.com/jedi661/UoFiddlerPixel) — Original C# Ultima SDK this project converts from
+- [ServUO](https://github.com/ServUO/ServUO) — Popular Ultima Online server implementation
+- [JSmith.UoSdk](https://github.com/j我的小装备/JSmith.UoSdk) — .NET SDK for UO client data
 
 ## Support
 
-For issues, questions, or suggestions, please open an issue on [GitHub Issues](https://github.com/UltimaWorks/ultima-sdk-python/issues).
+For issues, questions, or feature requests, please open an issue on the [GitHub Issues](https://github.com/UltimaWorks/ultima-sdk-python/issues) page.
