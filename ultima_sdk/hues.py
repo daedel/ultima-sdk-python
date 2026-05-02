@@ -19,6 +19,12 @@ from .exceptions import FileAccessException
 #     2  bytes  = uint16 table_end
 #     20 bytes  = null-padded name
 #     32 bytes  = 16 * uint16 colors again (duplicate "table" copy)
+#
+# Important:
+# The trailing duplicate 32-byte color table must still be consumed on read,
+# even if we do not currently expose it separately. Failing to do so leaves
+# the stream 32 bytes short per hue entry and corrupts alignment for every
+# subsequent entry.
 
 _HUES_PER_GROUP = 8
 _ENTRY_SIZE = 88
@@ -90,7 +96,12 @@ class Hues:
                 table_end = reader.read_uint16()
                 raw_name = reader.read_string(20, null_terminated=True)
                 name = raw_name.strip("\x00")
-                                reader.read_bytes(32)  # Skip duplicate color table (EA format)
+
+                # Consume the duplicate trailing color table (16 * uint16 = 32 bytes).
+                # We keep the first table as the canonical one, but we must read this
+                # second copy to preserve file alignment across all 3000 entries.
+                _duplicate_colors = [reader.read_uint16() for _ in range(16)]
+
                 cls._hues.append(HueEntry(colors, table_start, table_end, name))
 
     # ------------------------------------------------------------------
