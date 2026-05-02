@@ -46,7 +46,7 @@ def test_art_get_art_uses_verdata_patch(tmp_path):
     Art._initialized = False
     Art._index = None
 
-    art = Art.get_art(0)
+    art = Art.get_art(16385)
     assert art is not None
     assert art.width == 1
     assert art.height == 1
