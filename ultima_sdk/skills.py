@@ -1,6 +1,4 @@
-"""
-Skills module - Manages skill information and data.
-"""
+"""Skills module - Manages skill information and data."""
 
 from typing import List, Optional, Dict
 import struct
@@ -15,20 +13,37 @@ from .verdata_ids import IDS as VERDATA_IDS
 class SkillInfo:
     """Information about a skill."""
 
-    def __init__(self, skill_id: int, name: str, button_id: int):
+    def __init__(
+        self,
+        skill_id: int,
+        name: str,
+        button_id: int,
+        action: int = 0,
+        icon_id: int = 0,
+    ):
         self.skill_id = skill_id
         self.name = name
         self.button_id = button_id
+        self.action = action
+        self.icon_id = icon_id
 
 
 class Skills:
-    """Static class for managing skill data."""
-    
-    NOTE: This loader supports ServUO-style variable-length records
-    (name-prefixed or null-terminated with an int32 button_id).
-    It does NOT currently support the classic vanilla skills.mul format,
-    which uses fixed 35-byte entries: uint16 id + uint8 action + uint16 icon + 30-byte name.
-    Add support if vanilla client parsing becomes a requirement.
+    """Static class for managing skill data.
+
+    Supported formats:
+    1. Vanilla fixed-width skills.mul stream:
+       35 bytes per entry:
+         uint16 skill_id
+         uint8  action
+         uint16 icon_id
+         char[30] name
+
+    2. Indexed / ServUO-style records:
+       - uint16 name_len + name + int32 button_id
+       - uint8  name_len + name + int32 button_id
+       - null-terminated string + trailing int32 button_id
+    """
 
     _skills: List[SkillInfo] = []
     _skill_map: Dict[str, SkillInfo] = {}
@@ -76,77 +91,95 @@ class Skills:
             return
 
         if mul_path:
-            # Best-effort: some distributions may ship only skills.mul.
             with open(mul_path, "rb") as f:
                 data = f.read()
             cls._load_from_stream_bytes(data)
 
     @staticmethod
-    def _decode_index_record(skill_id: int, data: bytes) -> SkillInfo:
-        """Decode a single skills.mul indexed record.
+    def _make_skill(
+        skill_id: int,
+        name: str,
+        button_id: int,
+        action: int = 0,
+        icon_id: int = 0,
+    ) -> SkillInfo:
+        name = name.strip("\x00").strip()
+        if not name:
+            name = f"Skill {skill_id}"
+        return SkillInfo(
+            skill_id=skill_id,
+            name=name,
+            button_id=button_id,
+            action=action,
+            icon_id=icon_id,
+        )
 
-        Real client formats vary across eras. We support a couple of common shapes
-        and fall back to a forgiving parse.
+    @staticmethod
+    def _decode_index_record(skill_id: int, data: bytes) -> SkillInfo:
+        """Decode a single indexed skill record.
+
+        Supports several practical record layouts used by custom tooling.
         """
         if not data:
             raise ValueError("Empty skill record")
 
-        def make(name: str, button_id: int) -> SkillInfo:
-            name = name.strip("\x00").strip()
-            if not name:
-                name = f"Skill {skill_id}"
-            return SkillInfo(skill_id=skill_id, name=name, button_id=button_id)
-
         # Format A: uint16 name_len, name bytes, int32 button_id
-        if len(data) >= 2 + 4:
+        if len(data) >= 6:
             name_len = struct.unpack_from("<H", data, 0)[0]
-            if 0 < name_len <= len(data) - 6:
-                if len(data) == 2 + name_len + 4:
-                    name_bytes = data[2 : 2 + name_len]
-                    button_id = struct.unpack_from("<i", data, 2 + name_len)[0]
-                    if 0 <= button_id <= 0x7FFFFFFF:
-                        return make(
-                            name_bytes.decode("utf-8", errors="replace"), button_id
-                        )
+            if 0 < name_len <= len(data) - 6 and len(data) == 2 + name_len + 4:
+                name_bytes = data[2 : 2 + name_len]
+                button_id = struct.unpack_from("<i", data, 2 + name_len)[0]
+                if 0 <= button_id <= 0x7FFFFFFF:
+                    return Skills._make_skill(
+                        skill_id,
+                        name_bytes.decode("utf-8", errors="replace"),
+                        button_id,
+                    )
 
-        # Format B: byte name_len, name bytes, int32 button_id
-        if len(data) >= 1 + 4:
-            name_len8 = data[0]
-            if 0 < name_len8 <= len(data) - 5:
-                if len(data) == 1 + name_len8 + 4:
-                    name_bytes = data[1 : 1 + name_len8]
-                    button_id = struct.unpack_from("<i", data, 1 + name_len8)[0]
-                    if 0 <= button_id <= 0x7FFFFFFF:
-                        return make(
-                            name_bytes.decode("utf-8", errors="replace"), button_id
-                        )
-
-        # Format C: string (null-terminated) then int32 button_id.
+        # Format B: uint8 name_len, name bytes, int32 button_id
         if len(data) >= 5:
-            # Find first null within a reasonable range.
+            name_len8 = data[0]
+            if 0 < name_len8 <= len(data) - 5 and len(data) == 1 + name_len8 + 4:
+                name_bytes = data[1 : 1 + name_len8]
+                button_id = struct.unpack_from("<i", data, 1 + name_len8)[0]
+                if 0 <= button_id <= 0x7FFFFFFF:
+                    return Skills._make_skill(
+                        skill_id,
+                        name_bytes.decode("utf-8", errors="replace"),
+                        button_id,
+                    )
+
+        # Format C: null-terminated string then trailing int32 button_id
+        if len(data) >= 5:
             nul = data.find(b"\x00")
             if 0 <= nul < len(data) - 4:
-                # allow padding between string and button
-                tail = data[-4:]
-                button_id = struct.unpack("<i", tail)[0]
+                button_id = struct.unpack("<i", data[-4:])[0]
                 if 0 <= button_id <= 0x7FFFFFFF:
-                    name_bytes = data[:nul]
-                    return make(name_bytes.decode("utf-8", errors="replace"), button_id)
+                    return Skills._make_skill(
+                        skill_id,
+                        data[:nul].decode("utf-8", errors="replace"),
+                        button_id,
+                    )
 
-        # Fallback: treat whole record as text and use skill_id as button.
-        return make(data.decode("utf-8", errors="replace"), skill_id)
+        # Fallback: treat whole record as text
+        return Skills._make_skill(
+            skill_id,
+            data.decode("utf-8", errors="replace"),
+            skill_id,
+        )
 
     @classmethod
     def _load_from_index(cls) -> None:
+        """Load from idx/mul pair.
+
+        This path is treated as custom/indexed data, not vanilla fixed-35-byte skills.mul.
+        """
         if not cls._index:
             return
 
-        # Pre-size the skills list to the full index length so callers can
-        # request any in-range skill id even if the record is missing.
         cls._skills = [None] * len(cls._index.entries)  # type: ignore[list-item]
         cls._skill_map = {}
 
-        # Read every entry in the index; missing entries return None.
         for skill_id in range(len(cls._index.entries)):
             raw = cls._index.read_raw(skill_id)
             if not raw:
@@ -158,41 +191,115 @@ class Skills:
             cls._skills[skill_id] = info  # type: ignore[index]
             cls._skill_map[info.name.lower()] = info
 
-        # Replace any None slots with placeholder SkillInfo objects.
         for i, v in enumerate(cls._skills):
             if v is None:  # type: ignore[comparison-overlap]
-                placeholder = SkillInfo(skill_id=i, name=f"Skill {i}", button_id=i)
+                placeholder = SkillInfo(
+                    skill_id=i,
+                    name=f"Skill {i}",
+                    button_id=i,
+                )
                 cls._skills[i] = placeholder  # type: ignore[index]
 
+    @staticmethod
+    def _looks_like_vanilla_fixed_stream(data: bytes) -> bool:
+        """Check whether data matches classic 35-byte fixed records."""
+        entry_size = 35
+        if not data or len(data) % entry_size != 0:
+            return False
+
+        count = len(data) // entry_size
+        if count <= 0 or count > 500:
+            return False
+
+        plausible = 0
+        for i in range(min(count, 8)):
+            off = i * entry_size
+            skill_id, action, icon_id = struct.unpack_from("<HBH", data, off)
+            name_bytes = data[off + 5 : off + 35]
+            name = name_bytes.split(b"\x00", 1)[0].decode("latin-1", errors="ignore").strip()
+
+            if skill_id < 1000 and action < 32 and len(name) > 0:
+                plausible += 1
+
+        return plausible >= max(1, min(count, 3))
+
     @classmethod
-    def _load_from_stream_bytes(cls, data: bytes) -> None:
-        """Best-effort skills.mul stream parsing (when no idx is available)."""
-        reader = BinaryReader(data)
+    def _load_vanilla_fixed_stream(cls, data: bytes) -> None:
+        """Load classic fixed 35-byte skills.mul entries."""
+        entry_size = 35
+        count = len(data) // entry_size
+
         cls._skills = []
         cls._skill_map = {}
 
-        # Try: int32 count then records.
+        for i in range(count):
+            off = i * entry_size
+            skill_id, action, icon_id = struct.unpack_from("<HBH", data, off)
+            name_bytes = data[off + 5 : off + 35]
+            name = name_bytes.split(b"\x00", 1)[0].decode("latin-1", errors="replace").strip()
+
+            # Prefer stored skill_id if sane, otherwise use ordinal position.
+            resolved_skill_id = skill_id if 0 <= skill_id < 0xFFFF else i
+
+            info = cls._make_skill(
+                resolved_skill_id,
+                name,
+                button_id=icon_id,
+                action=action,
+                icon_id=icon_id,
+            )
+
+            # Keep list indexed by ordinal stream position for predictable access.
+            while len(cls._skills) <= i:
+                cls._skills.append(
+                    SkillInfo(
+                        skill_id=len(cls._skills),
+                        name=f"Skill {len(cls._skills)}",
+                        button_id=len(cls._skills),
+                    )
+                )
+
+            cls._skills[i] = info
+            cls._skill_map[info.name.lower()] = info
+
+    @classmethod
+    def _load_from_stream_bytes(cls, data: bytes) -> None:
+        """Load skills.mul when no idx is available.
+
+        Prefers classic vanilla 35-byte fixed-width parsing when detected,
+        otherwise falls back to the previous best-effort custom stream parser.
+        """
+        cls._skills = []
+        cls._skill_map = {}
+
+        if not data:
+            return
+
+        # First: classic vanilla fixed-width format
+        if cls._looks_like_vanilla_fixed_stream(data):
+            cls._load_vanilla_fixed_stream(data)
+            return
+
+        # Fallback: custom stream format
+        reader = BinaryReader(data)
+
         try:
             count = reader.read_int32()
         except Exception:
             return
 
-        # Reasonable skill counts are usually under a few hundred.
         if not (0 < count <= 500):
             return
 
         for skill_id in range(count):
             try:
-                # Attempt: int32 button, uint16 name_len, name bytes
                 button_id = reader.read_int32()
                 name_len = reader.read_uint16()
                 name_bytes = reader.read(name_len)
                 if len(name_bytes) != name_len:
                     break
-                name = (
-                    name_bytes.decode("utf-8", errors="replace").strip("\x00").strip()
-                )
-                info = SkillInfo(skill_id=skill_id, name=name, button_id=button_id)
+                name = name_bytes.decode("utf-8", errors="replace").strip("\x00").strip()
+                info = cls._make_skill(skill_id, name, button_id)
                 cls._skills.append(info)
                 cls._skill_map[info.name.lower()] = info
             except Exception:
@@ -203,7 +310,6 @@ class Skills:
         """Get skill by ID."""
         if not cls._initialized:
             cls.initialize()
-
         if 0 <= skill_id < len(cls._skills):
             return cls._skills[skill_id]
         return None
@@ -213,5 +319,4 @@ class Skills:
         """Find skill by name."""
         if not cls._initialized:
             cls.initialize()
-
         return cls._skill_map.get(name.lower())
