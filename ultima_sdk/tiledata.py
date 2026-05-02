@@ -51,10 +51,10 @@ class TileFlag:
 # Byte sizes for the two entry formats.
 _LAND_ENTRY_SIZE = 26  # uint32 flags + uint16 texture_id + 20-byte name
 _ITEM_ENTRY_SIZE = 37  # uint32 flags(4) + weight(1) + quality(1) + quantity(2)
-                       # + unknown(2) + value(2) + unknown(2) + height(1) + name(20)
-                       # = 37 bytes total. The 6 bytes after quantity are padding/
-                       # unknown fields present in the original EA format that must
-                       # be consumed on read and written as zeros on save.
+# + unknown(2) + value(2) + unknown(2) + height(1) + name(20)
+# = 37 bytes total. The 6 bytes after quantity are padding/
+# unknown fields present in the original EA format that must
+# be consumed on read and written as zeros on save.
 # tiledata.mul layout:
 #   512 land-tile header groups * (4-byte group header + 32 * 26-byte entries)
 #   512 item-tile header groups * (4-byte group header + 32 * 37-byte entries)
@@ -134,23 +134,23 @@ class TileData:
         Failing to consume all 37 bytes desynchronises every subsequent
         sequential read in the same group.
         """
-        flags    = reader.read_uint32()
-        weight   = reader.read_byte()
-        quality  = reader.read_byte()
+        flags = reader.read_uint32()
+        weight = reader.read_byte()
+        quality = reader.read_byte()
         quantity = reader.read_uint16()
-        reader.read_uint16()          # unknown_a — consume, discard
-        value    = reader.read_uint16()
-        reader.read_uint16()          # unknown_b — consume, discard
-        height   = reader.read_byte()
-        name     = reader.read_string(20, null_terminated=True).strip("\x00")
+        reader.read_uint16()  # unknown_a — consume, discard
+        value = reader.read_uint16()
+        reader.read_uint16()  # unknown_b — consume, discard
+        height = reader.read_byte()
+        name = reader.read_string(20, null_terminated=True).strip("\x00")
         return {
-            "flags":    flags,
-            "weight":   weight,
-            "quality":  quality,
+            "flags": flags,
+            "weight": weight,
+            "quality": quality,
             "quantity": quantity,
-            "value":    value,
-            "height":   height,
-            "name":     name,
+            "value": value,
+            "height": height,
+            "name": name,
         }
 
     # ------------------------------------------------------------------
@@ -243,7 +243,7 @@ class TileData:
                 entry["weight"],
                 entry["quality"],
                 entry["quantity"],
-                0,               # unknown_a padding
+                0,  # unknown_a padding
                 entry["value"],
             )
             + struct.pack("<HB", 0, entry["height"])  # unknown_b padding + height

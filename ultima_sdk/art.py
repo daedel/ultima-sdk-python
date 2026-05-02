@@ -11,7 +11,6 @@ from .exceptions import FileAccessException, FileParseError
 from .files import Files
 from .rendering import image_from_pixels
 
-
 # Land tiles are IDs 0x0000–0x3FFF (16384 IDs).
 # Static item art starts at 0x4000.
 _LAND_TILE_MAX_ID = 0x3FFF
@@ -148,7 +147,9 @@ class Art:
     def _decode_static(cls, graphic_id: int, data: bytes) -> ArtData:
         try:
             width, height, pixels = cls._decode_static_art(data)
-            return ArtData(graphic_id=graphic_id, width=width, height=height, pixels=pixels)
+            return ArtData(
+                graphic_id=graphic_id, width=width, height=height, pixels=pixels
+            )
         except FileParseError:
             raise
         except Exception as e:
@@ -160,6 +161,7 @@ class Art:
     ) -> Optional[ArtData]:
         try:
             from .equipconv import EquipConv
+
             converted = EquipConv.convert(int(item_id), body_id=body_id)
         except Exception:
             converted = int(item_id)
@@ -242,6 +244,7 @@ class Art:
 # ---------------------------------------------------------------------------
 # ArtTile / ArtLoader (kept for test compatibility)
 # ---------------------------------------------------------------------------
+
 
 class ArtTile:
     def __init__(self, width: int, height: int, data: bytes) -> None:

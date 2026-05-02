@@ -69,8 +69,9 @@ def test_find_location_reads_from_pointer():
     payload = struct.pack("<iiii", 10, 20, -5, 1)
     fake = FakeWinApi(memory={ptr: payload})
 
-    with patch("ultima_sdk.client.platform.system", return_value="Windows"), patch(
-        "ultima_sdk.client._get_winapi", return_value=fake
+    with (
+        patch("ultima_sdk.client.platform.system", return_value="Windows"),
+        patch("ultima_sdk.client._get_winapi", return_value=fake),
     ):
         Client.set_handle(ClientWindowHandle(123))
         Client._location_pointer = ptr
@@ -85,8 +86,9 @@ def test_calibrate_uses_env_pointer_and_matches_xyz(monkeypatch):
 
     monkeypatch.setenv("UO_LOCATION_POINTER", hex(ptr))
 
-    with patch("ultima_sdk.client.platform.system", return_value="Windows"), patch(
-        "ultima_sdk.client._get_winapi", return_value=fake
+    with (
+        patch("ultima_sdk.client.platform.system", return_value="Windows"),
+        patch("ultima_sdk.client._get_winapi", return_value=fake),
     ):
         Client.set_handle(ClientWindowHandle(123))
         ok = Client.calibrate(x=150, y=250, z=0)
@@ -97,8 +99,9 @@ def test_calibrate_uses_env_pointer_and_matches_xyz(monkeypatch):
 def test_calibrate_invalid_env_pointer_raises(monkeypatch):
     monkeypatch.setenv("UO_LOCATION_POINTER", "not-a-number")
 
-    with patch("ultima_sdk.client.platform.system", return_value="Windows"), patch(
-        "ultima_sdk.client._get_winapi", return_value=FakeWinApi()
+    with (
+        patch("ultima_sdk.client.platform.system", return_value="Windows"),
+        patch("ultima_sdk.client._get_winapi", return_value=FakeWinApi()),
     ):
         Client.set_handle(ClientWindowHandle(123))
         with pytest.raises(ClientException):
@@ -109,8 +112,9 @@ def test_calibrate_open_process_failure_raises(monkeypatch):
     ptr = 0x3000
     monkeypatch.setenv("UO_LOCATION_POINTER", hex(ptr))
 
-    with patch("ultima_sdk.client.platform.system", return_value="Windows"), patch(
-        "ultima_sdk.client._get_winapi", return_value=FakeWinApi(open_ok=False)
+    with (
+        patch("ultima_sdk.client.platform.system", return_value="Windows"),
+        patch("ultima_sdk.client._get_winapi", return_value=FakeWinApi(open_ok=False)),
     ):
         Client.set_handle(ClientWindowHandle(123))
         with pytest.raises(ClientException):
@@ -120,8 +124,9 @@ def test_calibrate_open_process_failure_raises(monkeypatch):
 def test_calibrate_no_env_pointer_returns_false(monkeypatch):
     monkeypatch.delenv("UO_LOCATION_POINTER", raising=False)
 
-    with patch("ultima_sdk.client.platform.system", return_value="Windows"), patch(
-        "ultima_sdk.client._get_winapi", return_value=FakeWinApi()
+    with (
+        patch("ultima_sdk.client.platform.system", return_value="Windows"),
+        patch("ultima_sdk.client._get_winapi", return_value=FakeWinApi()),
     ):
         Client.set_handle(ClientWindowHandle(123))
         assert Client.calibrate(x=1, y=2, z=3) is False

@@ -216,7 +216,11 @@ class Skills:
             off = i * entry_size
             skill_id, action, icon_id = struct.unpack_from("<HBH", data, off)
             name_bytes = data[off + 5 : off + 35]
-            name = name_bytes.split(b"\x00", 1)[0].decode("latin-1", errors="ignore").strip()
+            name = (
+                name_bytes.split(b"\x00", 1)[0]
+                .decode("latin-1", errors="ignore")
+                .strip()
+            )
 
             if skill_id < 1000 and action < 32 and len(name) > 0:
                 plausible += 1
@@ -236,7 +240,11 @@ class Skills:
             off = i * entry_size
             skill_id, action, icon_id = struct.unpack_from("<HBH", data, off)
             name_bytes = data[off + 5 : off + 35]
-            name = name_bytes.split(b"\x00", 1)[0].decode("latin-1", errors="replace").strip()
+            name = (
+                name_bytes.split(b"\x00", 1)[0]
+                .decode("latin-1", errors="replace")
+                .strip()
+            )
 
             # Prefer stored skill_id if sane, otherwise use ordinal position.
             resolved_skill_id = skill_id if 0 <= skill_id < 0xFFFF else i
@@ -298,7 +306,9 @@ class Skills:
                 name_bytes = reader.read(name_len)
                 if len(name_bytes) != name_len:
                     break
-                name = name_bytes.decode("utf-8", errors="replace").strip("\x00").strip()
+                name = (
+                    name_bytes.decode("utf-8", errors="replace").strip("\x00").strip()
+                )
                 info = cls._make_skill(skill_id, name, button_id)
                 cls._skills.append(info)
                 cls._skill_map[info.name.lower()] = info

@@ -103,7 +103,7 @@ class Light:
         - known square sizes based on byte length.
         """
         # Fixture layout: <HH width,height then pixels (1 or 2 bytes per pixel)
-            # NOTE: Light masks are typically circular and fit within 512x512 max.
+        # NOTE: Light masks are typically circular and fit within 512x512 max.
         if len(data) >= 4:
             w, h = struct.unpack_from("<HH", data, 0)
             if w > 0 and h > 0 and w <= 512 and h <= 512:
