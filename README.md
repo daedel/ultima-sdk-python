@@ -1,3 +1,7 @@
+<![CDATA[<p align="center">
+  <img src="https://raw.githubusercontent.com/UltimaWorks/ultima-sdk-python/main/ultima-sdk-python%20banner.png" alt="Ultima SDK Python Banner" width="100%" />
+</p>
+
 ![PyPI Python Version](https://img.shields.io/pypi/pyversions/ultima-sdk-python)
 [![GitHub license](https://img.shields.io/github/license/UltimaWorks/ultima-sdk-python)](LICENSE)
 [![GitHub last commit](https://img.shields.io/github/last-commit/UltimaWorks/ultima-sdk-python)](https://github.com/UltimaWorks/ultima-sdk-python/commits/main)
@@ -285,3 +289,4 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup inst
 ## Support
 
 For issues, questions, or feature requests, please open an issue on the [GitHub Issues](https://github.com/UltimaWorks/ultima-sdk-python/issues) page.
+]]>
