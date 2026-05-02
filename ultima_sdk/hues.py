@@ -90,6 +90,7 @@ class Hues:
                 table_end = reader.read_uint16()
                 raw_name = reader.read_string(20, null_terminated=True)
                 name = raw_name.strip("\x00")
+                                reader.read_bytes(32)  # Skip duplicate color table (EA format)
                 cls._hues.append(HueEntry(colors, table_start, table_end, name))
 
     # ------------------------------------------------------------------
