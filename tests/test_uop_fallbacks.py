@@ -79,7 +79,7 @@ def test_art_initialize_uses_uop_fallback(tmp_path, monkeypatch):
     Art._index = None
     assert Art.initialize() is True
 
-    tile = Art.get_art(1)
+    tile = Art.get_art(16384)
     assert tile is not None
     assert tile.width == w and tile.height == h
 
