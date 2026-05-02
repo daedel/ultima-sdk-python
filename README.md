@@ -1,5 +1,5 @@
-<![CDATA[<p align="center">
-  <img src="https://raw.githubusercontent.com/UltimaWorks/ultima-sdk-python/main/ultima-sdk-python%20banner.png" alt="Ultima SDK Python Banner" width="100%" />
+<p align="center">
+  <img src="https://raw.githubusercontent.com/UltimaWorks/ultima-sdk-python/main/ultima-sdk-python%20banner.png" alt="Ultima SDK Python Banner" width="75%" />
 </p>
 
 ![PyPI Python Version](https://img.shields.io/pypi/pyversions/ultima-sdk-python)
