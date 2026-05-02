@@ -1,11 +1,11 @@
 <p align="center">
   <img src="https://raw.githubusercontent.com/UltimaWorks/ultima-sdk-python/main/ultima-sdk-python%20banner.png" alt="Ultima SDK Python Banner" width="75%" />
-</p>
+
 
 ![PyPI Python Version](https://img.shields.io/pypi/pyversions/ultima-sdk-python)
 [![GitHub license](https://img.shields.io/github/license/UltimaWorks/ultima-sdk-python)](LICENSE)
 [![GitHub last commit](https://img.shields.io/github/last-commit/UltimaWorks/ultima-sdk-python)](https://github.com/UltimaWorks/ultima-sdk-python/commits/main)
-
+</p>
 # Ultima SDK Python
 
 A comprehensive 1:1 Python conversion of the C# Ultima Online SDK. This library provides full read access to Ultima Online client data files (`.mul`, `.idx`, and UOP formats) for use in tools, servers, and modding pipelines.
