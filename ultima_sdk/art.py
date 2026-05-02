@@ -117,7 +117,9 @@ class Art:
         except Exception:
             pass
 
-        # Fallback: some formats store land tiles as a fixed 44x44 block of 16-bit pixels.
+        # Fallback: assumes pre-converted flat 44x44 pixel buffer.
+        # Vanilla land tiles in art.mul use a diamond-shaped scanline RLE,
+        # not a raw pixel buffer. This fallback only works if the upstream already decoded the data (e.g. from a UOP .tga).
         if len(raw) == 44 * 44 * 2:
             return ArtData(graphic_id=graphic_id, width=44, height=44, pixels=raw)
 
