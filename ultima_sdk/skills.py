@@ -23,6 +23,12 @@ class SkillInfo:
 
 class Skills:
     """Static class for managing skill data."""
+    
+    NOTE: This loader supports ServUO-style variable-length records
+    (name-prefixed or null-terminated with an int32 button_id).
+    It does NOT currently support the classic vanilla skills.mul format,
+    which uses fixed 35-byte entries: uint16 id + uint8 action + uint16 icon + 30-byte name.
+    Add support if vanilla client parsing becomes a requirement.
 
     _skills: List[SkillInfo] = []
     _skill_map: Dict[str, SkillInfo] = {}
