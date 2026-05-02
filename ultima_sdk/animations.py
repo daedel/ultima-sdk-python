@@ -225,11 +225,20 @@ class Animations:
 
     @classmethod
     def _compute_entry_id(cls, body: int, action: int, direction: int) -> int:
+        """Compute the flat index into anim*.idx for a given body/action/direction.
+
+        Classic client anim.mul piecewise layout:
+          body   0-199: base = body * 110,                22 actions/body
+          body 200-399: base = 22000 + (body-200) * 65,  13 actions/body
+          body 400-599: base = 35000 + (body-400) * 110, 22 actions/body
+          body 600-799: base = 57000 + (body-600) * 65,  13 actions/body
+          body  >= 800: not present in vanilla anim.mul; return -1.
+
+        Each body has (actions * 5 directions) entries stored consecutively.
+        """
         if body < 0 or action < 0 or direction < 0:
             return -1
 
-        # Classic client indexing is piecewise by body range and varies between
-        # 22-actions (110 entries) and 13-actions (65 entries) bodies.
         if body < 200:
             base = body * 110
             actions = 22
@@ -243,8 +252,8 @@ class Animations:
             base = 57000 + (body - 600) * 65
             actions = 13
         else:
-            base = 70000 + (body - 800) * 110
-            actions = 22
+            # Bodies >= 800 do not exist in vanilla anim.mul.
+            return -1
 
         if action >= actions:
             return -1

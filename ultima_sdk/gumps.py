@@ -128,7 +128,11 @@ class Gumps:
         Supports:
         - Test/fixture raw format: uint16 width, uint16 height, then width*height*2 bytes of UO16 pixels.
         - Best-effort classic gump RLE: int32 width, int32 height, int32[height] lookup table,
-          then (color:uint16, run:uint16) pairs for each scanline.
+          then (run:uint16, color:uint16) pairs for each scanline.
+
+        NOTE: classic gumpart.mul RLE packet format is (run, color) — run count
+        first, then the 16-bit BGR-555 color value. This is the opposite of art.mul
+        static RLE which uses (xoffset, run_length) headers.
         """
         # Raw test format (matches `tests/test_art_decode.py` style fixtures).
         if len(data) >= 4:
@@ -166,11 +170,12 @@ class Gumps:
                     return None
 
                 x = 0
-                # Decode (color, run) pairs until we fill the row or hit bounds.
+                # Decode (run, color) pairs until we fill the row or hit bounds.
+                # gumpart.mul RLE format: run count first, then BGR-555 color value.
                 while x < width:
                     if pos + 4 > len(data):
                         break
-                    color, run = struct.unpack_from("<HH", data, pos)
+                    run, color = struct.unpack_from("<HH", data, pos)
                     pos += 4
                     if run == 0:
                         break
