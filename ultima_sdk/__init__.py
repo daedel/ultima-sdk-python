@@ -3,12 +3,8 @@
 Expose common classes at package level for convenience.
 Light/guarded imports keep import-time cost low.
 """
-from __future__ import annotations
 
-from typing import List
-import warnings
-
-__version__ = "1.1.0"
+__version__ = "1.1.3"
 __author__ = "UltimaWorks"
 
 # Eagerly expose common high-level classes if available; keep failures silent
