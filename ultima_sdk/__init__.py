@@ -4,7 +4,7 @@ Expose common classes at package level for convenience.
 Light/guarded imports keep import-time cost low.
 """
 
-__version__ = "1.1.3"
+__version__ = "1.1.4"
 __author__ = "UltimaWorks"
 
 # Eagerly expose common high-level classes if available; keep failures silent
