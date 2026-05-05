@@ -105,3 +105,27 @@ class Gumps:
             pixels.append(row[:width])
 
         return pixels, width, height
+        
+    # ------------------------------------------------------------------
+    # Verdata patch integration
+    # ------------------------------------------------------------------
+
+    # Overlay cache: maps gump id -> (raw_bytes, extra) from verdata patches.
+    _patch_cache: dict = {}
+
+    @classmethod
+    def apply_verdata_patch(cls, block_id: int, data: bytes, extra: int = 0) -> None:
+        """Cache raw verdata patch bytes for a gump.
+
+        block_id is the gump id (same as the id passed to get_gump()).
+        data is the raw RLE bytes from gumps.mul.
+        extra encodes width and height: (extra >> 16) & 0xFFFF = width,
+                                         extra & 0xFFFF = height.
+
+        Subsequent calls to get_gump(block_id) will decode from these bytes
+        instead of reading from gumps.mul via _index.
+        """
+        if not cls._initialized:
+            cls.initialize()
+        cls._patch_cache[block_id] = (data, extra)
+
