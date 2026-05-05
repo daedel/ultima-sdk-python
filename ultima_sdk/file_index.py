@@ -1,9 +1,13 @@
 """
 FileIndex module - Manages indexed file access for .mul files.
-"""
 
+Verdata patching is NOT handled here. Use Verdata.apply() at startup to
+populate each module's _patch_cache. This keeps FileIndex stateless with
+respect to verdata and avoids initialization-order cycles.
+"""
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Tuple
+
 from .binary_extensions import BinaryReader
 from .exceptions import FileParseError
 from io import BytesIO
@@ -41,8 +45,8 @@ class FileIndexEntry(IndexEntry):
 class FileIndex:
     """Manages indexed file access.
 
-    Tests expect a no-arg constructor and a `load_from_bytes()` helper
-    to populate `entries` from raw index data.
+    Tests expect a no-arg constructor and a `load_from_bytes()` helper to
+    populate `entries` from raw index data.
     """
 
     def __init__(
@@ -50,10 +54,12 @@ class FileIndex:
         idx_path: Optional[str] = None,
         mul_path: Optional[str] = None,
         file_id: Optional[int] = None,
+        entry_size: int = 12,
     ):
         self.idx_path = idx_path
         self.mul_path = mul_path
-        self.file_id = file_id
+        self.file_id = file_id  # kept for external reference; not used internally
+        self.entry_size = entry_size
         self.entries: List[IndexEntry] = []
         if idx_path and mul_path:
             self._load_index()
@@ -72,7 +78,7 @@ class FileIndex:
                         # where -1 indicates a missing entry.
                         offset = reader.read_int32()
                         length = reader.read_int32()
-                        extra = reader.read_int32()
+                        extra  = reader.read_int32()
                         self.entries.append(IndexEntry(offset, length, extra))
                     except EOFError:
                         break
@@ -95,8 +101,8 @@ class FileIndex:
                 try:
                     offset = reader.read_uint32()
                     length = reader.read_uint32()
-                    extra = reader.read_uint32()
-                    entry = FileIndexEntry(offset=offset, length=length, extra=extra)
+                    extra  = reader.read_uint32()
+                    entry  = FileIndexEntry(offset=offset, length=length, extra=extra)
                     self.entries.append(entry)
                 except EOFError:
                     break
@@ -114,38 +120,12 @@ class FileIndex:
             return self.entries[index]
         raise IndexError("index out of range")
 
-    def read_raw(self, index: int) -> Optional[bytes]:
-        """Read raw bytes for an entry from the associated mul file.
-
-        Returns None for missing entries (e.g. offset < 0 or length <= 0).
-        """
-        if index is None or index < 0:
-            return None
-
-        # verdata.mul overrides: allow patched blocks to supersede idx/mul.
-        # Import locally to avoid a hard dependency/cycle at import time.
-        if self.file_id is not None:
-            try:
-                from .verdata import Verdata
-
-                patch = Verdata.read_patch(self.file_id, index)
-                if patch is not None:
-                    return patch
-            except Exception:
-                # If verdata is unreadable, fall back to base MUL.
-                pass
-
-        try:
-            entry = self.get_entry(index)
-        except IndexError:
-            return None
-        if entry.offset is None or entry.length is None:
-            return None
+    def _read_raw_from_disk(self, entry: IndexEntry) -> Optional[bytes]:
+        """Read raw bytes from mul file for a valid entry."""
         if entry.offset < 0 or entry.length <= 0:
             return None
         if not self.mul_path:
             return None
-
         try:
             with open(self.mul_path, "rb") as f:
                 f.seek(entry.offset)
@@ -153,8 +133,48 @@ class FileIndex:
         except Exception:
             return None
 
-    # Backward compatible alias
+    def read_raw(self, index: int) -> Optional[bytes]:
+        """Read raw bytes for an entry from the associated mul file.
+
+        Returns None for missing entries (e.g. offset < 0 or length <= 0).
+        Verdata patching is NOT performed here -- use Verdata.apply() instead.
+        """
+        if index is None or index < 0:
+            return None
+        try:
+            entry = self.get_entry(index)
+        except IndexError:
+            return None
+        if entry.offset is None or entry.length is None:
+            return None
+        return self._read_raw_from_disk(entry)
+
+    def read_raw_with_extra(self, index: int) -> Optional[Tuple[bytes, int]]:
+        """Read raw bytes AND the extra field for an entry.
+
+        Returns (data, extra) or None if the entry is missing/invalid.
+        Used by modules that encode metadata in the idx extra field
+        (e.g. Gumps encodes width<<16|height in extra).
+        """
+        if index is None or index < 0:
+            return None
+        try:
+            entry = self.get_entry(index)
+        except IndexError:
+            return None
+        if entry.offset is None or entry.length is None:
+            return None
+        data = self._read_raw_from_disk(entry)
+        if data is None:
+            return None
+        return data, entry.extra
+
+    # Backward-compatible aliases
     def read_entry(self, index: int) -> Optional[bytes]:
+        return self.read_raw(index)
+
+    # read_raw_data is an alias used by several modules
+    def read_raw_data(self, index: int) -> Optional[bytes]:
         return self.read_raw(index)
 
     @property
