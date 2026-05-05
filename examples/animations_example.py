@@ -1,9 +1,6 @@
-"""animations.py example.
+"""Animations example.
 
-Fetches an animation and saves the first frame as PNG/PPM.
-
-Run (needs client files + Pillow optional):
-  python -m examples.animations_example --uo-root "C:\\Path\\To\\UO" --body 1 --action 0 --direction 0 --out out
+Loads a creature animation and writes the first frame as an image.
 """
 
 from __future__ import annotations
@@ -27,28 +24,24 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_uo_root_arg(parser)
     add_out_arg(parser)
-    parser.add_argument("--body", type=int, default=1)
-    parser.add_argument("--action", type=int, default=0)
-    parser.add_argument("--direction", type=int, default=0)
+    parser.add_argument("--body", type=int, default=1, help="Body id to load")
+    parser.add_argument("--action", type=int, default=0, help="Action index")
+    parser.add_argument("--direction", type=int, default=0, help="Direction index")
     args = parser.parse_args()
 
     init_files(resolve_uo_root(args.uo_root), require=True)
     out_dir = ensure_out_dir(args.out)
 
     Animations.initialize()
-    anim = Animations.get_animation(args.body, args.action, args.direction)
-    if anim is None or not anim.frames:
+    animation = Animations.get_animation(args.body, args.action, args.direction)
+    if animation is None or not animation.frames:
         print("Animation not found")
         return 1
 
-    print(f"Frames: {len(anim.frames)}")
-    frame0 = anim.frames[0]
-    out_path = (
-        Path(out_dir)
-        / f"anim_body{args.body}_act{args.action}_dir{args.direction}_frame0.png"
-    )
-    saved = save_uo16_image(frame0.width, frame0.height, frame0.pixels, out_path)
-    print(f"Wrote {saved}")
+    frame = animation.frames[0]
+    out_path = Path(out_dir) / f"animation_body{args.body}_action{args.action}_dir{args.direction}_frame0.png"
+    saved = save_uo16_image(frame.width, frame.height, frame.pixels, out_path)
+    print(f"Wrote {saved} ({frame.width}x{frame.height})")
     return 0
 
 

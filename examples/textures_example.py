@@ -1,6 +1,6 @@
 """Textures example.
 
-Tries to decode a landscape texture and write it as PNG.
+Loads a landscape texture and writes it as an image.
 """
 
 from __future__ import annotations
@@ -16,7 +16,6 @@ from ._common import (
     ensure_out_dir,
     init_files,
     resolve_uo_root,
-    save_uo16_image,
 )
 
 
@@ -24,7 +23,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_uo_root_arg(parser)
     add_out_arg(parser)
-    parser.add_argument("--id", type=int, default=0, help="Texture id (default: 0)")
+    parser.add_argument("--id", type=int, default=0, help="Texture id")
     args = parser.parse_args()
 
     init_files(
@@ -35,22 +34,14 @@ def main() -> int:
     out_dir = ensure_out_dir(args.out)
 
     Textures.initialize()
+    out_path = Path(out_dir) / f"texture_{args.id:04d}.png"
 
-    candidates = [int(args.id)] + list(range(0, 128))
-    for tex_id in candidates:
-        try:
-            t = Textures.get_texture(tex_id)
-            if t is None:
-                continue
-            out_path = Path(out_dir) / f"texture_{tex_id:04d}.png"
-            saved = save_uo16_image(t.width, t.height, t.pixels, out_path)
-            print(f"Decoded texture {tex_id} -> {saved} ({t.width}x{t.height})")
-            return 0
-        except Exception:
-            continue
+    if Textures.save_png(args.id, out_path):
+        print(f"Wrote {out_path}")
+        return 0
 
-    print("Could not decode any texture in 0..127.")
-    return 2
+    print(f"Texture id {args.id} not found")
+    return 1
 
 
 if __name__ == "__main__":

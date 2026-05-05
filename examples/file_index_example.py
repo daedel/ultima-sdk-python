@@ -1,7 +1,6 @@
-"""FileIndex example with a tiny synthetic idx/mul pair.
+"""FileIndex example with a synthetic idx/mul pair.
 
-Run:
-  python -m examples.file_index_example
+Builds a tiny file pair in a temporary directory and reads back raw bytes.
 """
 
 from __future__ import annotations
@@ -16,17 +15,16 @@ from ultima_sdk.file_index import FileIndex
 def main() -> int:
     payload = b"Hello from mul!"
 
-    with tempfile.TemporaryDirectory() as td:
-        td_path = Path(td)
-        mul_path = td_path / "example.mul"
-        idx_path = td_path / "example.idx"
-        mul_path.write_bytes(payload)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        temp_dir = Path(tmpdir)
+        mul_path = temp_dir / "example.mul"
+        idx_path = temp_dir / "example.idx"
 
-        # On-disk .idx uses 3 x int32 per entry.
+        mul_path.write_bytes(payload)
         idx_path.write_bytes(struct.pack("<iii", 0, len(payload), 0))
 
-        idx = FileIndex(str(idx_path), str(mul_path))
-        raw = idx.read_raw(0)
+        index = FileIndex(str(idx_path), str(mul_path))
+        raw = index.read_raw(0)
         print(f"read_raw(0): {raw!r}")
         return 0
 

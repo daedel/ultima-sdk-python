@@ -1,15 +1,13 @@
 """Files path discovery example.
 
-Run (with a real client):
-  python -m examples.files_example --uo-root "C:\\Path\\To\\Ultima Online"
-
-Or set env var UO_ROOT / ULTIMA_ONLINE_DIR.
+Shows how to initialize Files and resolve known UO data filenames.
 """
 
 from __future__ import annotations
 
 import argparse
 import os
+from pathlib import Path
 
 from ultima_sdk.files import Files
 
@@ -29,24 +27,22 @@ def main() -> int:
     names = [
         "client.exe",
         "art.mul",
-        "artLegacyMUL.uop",
+        "artlegacymul.uop",
         "tiledata.mul",
         "hues.mul",
         "gumpart.mul",
-        "gumpartLegacyMUL.uop",
+        "gumpartlegacymul.uop",
         "sound.mul",
-        "soundLegacyMUL.uop",
+        "soundlegacymul.uop",
         "map0.mul",
-        "map0LegacyMUL.uop",
+        "map0legacymul.uop",
         "cliloc.enu",
     ]
+
     for name in names:
-        try:
-            p = Files.get_file_path(name)
-        except Exception:
-            p = None
-        exists = bool(p and os.path.exists(p))
-        print(f"{name:22} -> {p} {'(ok)' if exists else ''}")
+        path = Files.get_file_path(name)
+        found = bool(path and Path(path).exists())
+        print(f"{name:22} -> {path or 'not found'}{' (ok)' if found else ''}")
 
     return 0
 

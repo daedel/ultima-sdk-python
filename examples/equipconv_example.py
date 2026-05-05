@@ -1,6 +1,6 @@
 """EquipConv example.
 
-Loads equipconv.def from the client if available and converts an item id.
+Loads equipconv.def and converts an item id, optionally for a specific body.
 """
 
 from __future__ import annotations
@@ -19,16 +19,22 @@ def main() -> int:
         "--item",
         type=lambda s: int(s, 0),
         default=0x0EED,
-        help="Item id (default: 0x0EED)",
+        help="Item id to convert",
     )
-    parser.add_argument("--body", type=int, default=None, help="Optional body id")
+    parser.add_argument(
+        "--body",
+        type=int,
+        default=None,
+        help="Optional body id for per-body conversion",
+    )
     args = parser.parse_args()
 
     init_files(resolve_uo_root(args.uo_root), require=True)
-    ok = EquipConv.initialize()
-    print("EquipConv initialized:", ok)
-    converted = EquipConv.convert(int(args.item), body_id=args.body)
-    print(f"Item 0x{int(args.item):04X} -> 0x{converted:04X} (body={args.body})")
+    initialized = EquipConv.initialize()
+    print(f"EquipConv initialized: {initialized}")
+
+    converted = EquipConv.convert(args.item, body_id=args.body)
+    print(f"0x{args.item:04X} -> 0x{converted:04X} (body={args.body})")
     return 0
 
 

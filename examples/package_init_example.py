@@ -1,9 +1,6 @@
 """Package __init__.py example.
 
-Demonstrates package-level exports and version.
-
-Run:
-  python -m examples.package_init_example
+Demonstrates package-level exports and version metadata.
 """
 
 from __future__ import annotations
@@ -16,11 +13,11 @@ def main() -> int:
     print("ultima_sdk.__version__:", getattr(ultima_sdk, "__version__", None))
     print("Exports include Files:", hasattr(ultima_sdk, "Files"))
 
-    # This may warn if no client is configured; that's okay.
     try:
         Files.initialize()
     except Exception:
         pass
+
     print("Files directory:", Files.get_directory())
     return 0
 

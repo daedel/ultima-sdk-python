@@ -1,10 +1,6 @@
-"""rendering.py example (synthetic, no client files required).
+"""Rendering example (synthetic, no client files required).
 
-Creates a small UO16 (5-5-5) gradient buffer and writes it to PNG if Pillow is
-installed, otherwise PPM.
-
-Run:
-  python -m examples.rendering_example --out out
+Creates a UO16 gradient and writes it to an image.
 """
 
 from __future__ import annotations
@@ -31,16 +27,16 @@ def main() -> int:
     out_dir = ensure_out_dir(args.out)
     out_path = Path(out_dir) / "rendering_gradient.png"
 
-    w, h = 96, 48
-    buf = bytearray(w * h * 2)
-    for y in range(h):
-        for x in range(w):
-            r = (x * 31) // (w - 1)
-            g = (y * 31) // (h - 1)
-            b = 31 - ((x * 31) // (w - 1))
-            struct.pack_into("<H", buf, (y * w + x) * 2, _rgb555(r, g, b))
+    width, height = 96, 48
+    pixels = bytearray(width * height * 2)
+    for y in range(height):
+        for x in range(width):
+            r = (x * 31) // (width - 1)
+            g = (y * 31) // (height - 1)
+            b = 31 - r
+            struct.pack_into("<H", pixels, (y * width + x) * 2, _rgb555(r, g, b))
 
-    saved = save_uo16_image(w, h, bytes(buf), out_path)
+    saved = save_uo16_image(width, height, bytes(pixels), out_path)
     print(f"Wrote {saved}")
     return 0
 

@@ -1,6 +1,6 @@
 """StringList example.
 
-Prints a few cliloc entries from the configured client.
+Reads cliloc entries from the configured client files.
 """
 
 from __future__ import annotations
@@ -15,23 +15,18 @@ from ._common import add_uo_root_arg, init_files, resolve_uo_root
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_uo_root_arg(parser)
-    parser.add_argument(
-        "--id", type=int, default=3000001, help="Cliloc id (default: 3000001)"
-    )
+    parser.add_argument("--id", type=int, default=3000001, help="Cliloc id")
     args = parser.parse_args()
 
     init_files(
         resolve_uo_root(args.uo_root),
         require=True,
-        require_any=("cliloc.enu", "cliloc.deu"),
+        require_any=("cliloc.enu", "cliloc.deu", "cliloc.custom1", "cliloc.custom2"),
     )
-    StringList.initialize()
 
-    s = StringList.get_string(int(args.id))
-    print(f"cliloc[{args.id}] = {s!r}")
-    # Also show a small range around it.
-    for i in range(int(args.id), int(args.id) + 5):
-        print(f"  {i}: {StringList.get_string(i)!r}")
+    StringList.initialize()
+    for entry_id in range(args.id, args.id + 5):
+        print(f"cliloc[{entry_id}] = {StringList.get_string(entry_id)!r}")
     return 0
 
 

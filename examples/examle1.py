@@ -1,12 +1,12 @@
-"""Legacy example (kept for backwards compatibility).
+"""Legacy example entry point.
 
-Prefer:
-  python -m examples.files_example --uo-root "..."
+This module is kept for backwards compatibility and delegates to files_example.
 """
 
 from __future__ import annotations
 
 from .files_example import main
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

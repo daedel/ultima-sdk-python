@@ -32,3 +32,6 @@
 
 ## Linting
 - `requirements.txt` includes `flake8`; if you add lint fixes, prefer minimal, localized changes consistent with existing style.
+
+## Python Package Development
+- Always use virtual environments for Python package development. Ensure the correct virtual environment is activated before running Python commands or installing packages.

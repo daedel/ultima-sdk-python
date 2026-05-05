@@ -1,13 +1,11 @@
-"""Rendering example.
+"""Render tile example.
 
-Writes a small PNG using the built-in Pillow rendering helpers.
-
-Run:
-  python -m examples.render_tile_example
+Writes a synthetic UO16 image using the SDK rendering helpers.
 """
 
 from __future__ import annotations
 
+import argparse
 import struct
 from pathlib import Path
 
@@ -22,8 +20,6 @@ def _rgb555(r: int, g: int, b: int) -> int:
 
 
 def main() -> int:
-    import argparse
-
     parser = argparse.ArgumentParser(description=__doc__)
     add_out_arg(parser)
     args = parser.parse_args()
@@ -31,17 +27,16 @@ def main() -> int:
     out_dir = ensure_out_dir(args.out)
     out_path = Path(out_dir) / "render_tile.png"
 
-    w, h = 64, 64
-    buf = bytearray(w * h * 2)
-    for y in range(h):
-        for x in range(w):
-            r = (x * 31) // (w - 1)
-            g = (y * 31) // (h - 1)
-            b = ((x + y) * 31) // (w + h - 2)
-            pix = _rgb555(r, g, b)
-            struct.pack_into("<H", buf, (y * w + x) * 2, pix)
+    width, height = 64, 64
+    pixels = bytearray(width * height * 2)
+    for y in range(height):
+        for x in range(width):
+            r = (x * 31) // (width - 1)
+            g = (y * 31) // (height - 1)
+            b = ((x + y) * 31) // (width + height - 2)
+            struct.pack_into("<H", pixels, (y * width + x) * 2, _rgb555(r, g, b))
 
-    saved = save_uo16_image(w, h, bytes(buf), out_path)
+    saved = save_uo16_image(width, height, bytes(pixels), out_path)
     print(f"Wrote {saved}")
     return 0
 

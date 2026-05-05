@@ -1,10 +1,6 @@
 """animation_edit.py example (synthetic, no client files required).
 
-Builds a fake AnimationFrame and converts it to an image.
-Writes PNG if Pillow is installed, otherwise PPM.
-
-Run:
-  python -m examples.animation_edit_example --out out
+Builds a synthetic animation frame and renders it to an image.
 """
 
 from __future__ import annotations
@@ -34,27 +30,26 @@ def main() -> int:
     out_dir = ensure_out_dir(args.out)
     out_path = Path(out_dir) / "animation_edit_frame.png"
 
-    w, h = 64, 32
-    pixels = bytearray(w * h * 2)
-    for y in range(h):
-        for x in range(w):
-            # simple pattern
-            r = (x * 31) // (w - 1)
-            g = (y * 31) // (h - 1)
-            b = 31 if (x // 8) % 2 == 0 else 0
-            struct.pack_into("<H", pixels, (y * w + x) * 2, _rgb555(r, g, b))
+    width, height = 128, 64
+    pixels = bytearray(width * height * 2)
+    for y in range(height):
+        for x in range(width):
+            r = (x * 31) // (width - 1)
+            g = (y * 31) // (height - 1)
+            b = (x ^ y) & 0x1F
+            struct.pack_into("<H", pixels, (y * width + x) * 2, _rgb555(r, g, b))
 
-    frame = AnimationFrame(width=w, height=h, pixels=bytes(pixels))
+    frame = AnimationFrame(width=width, height=height, pixels=bytes(pixels))
 
-    # Prefer using AnimationEdit API (requires Pillow), but provide a fallback.
     try:
-        img = AnimationEdit.frame_to_image(frame)
-        img.save(str(out_path), format="PNG")
+        image = AnimationEdit.frame_to_image(frame)
+        image.save(str(out_path), format="PNG")
         print(f"Wrote {out_path}")
+        return 0
     except ImportError:
-        saved = save_uo16_image(w, h, frame.pixels, out_path)
+        saved = save_uo16_image(width, height, frame.pixels, out_path)
         print(f"Pillow not installed; wrote {saved}")
-    return 0
+        return 0
 
 
 if __name__ == "__main__":

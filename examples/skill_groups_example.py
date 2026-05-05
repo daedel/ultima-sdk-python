@@ -1,6 +1,6 @@
 """SkillGroups example.
 
-Loads skill groups and prints the group names.
+Loads skill groups and prints group names with their first skills.
 """
 
 from __future__ import annotations
@@ -18,18 +18,24 @@ def main() -> int:
     args = parser.parse_args()
 
     init_files(
-        resolve_uo_root(args.uo_root), require=True, require_any=("skillgrp.mul",)
+        resolve_uo_root(args.uo_root),
+        require=True,
+        require_any=("skillgrp.mul",),
     )
-    SkillGroups.initialize()
 
-    i = 0
+    SkillGroups.initialize()
+    index = 0
     while True:
-        g = SkillGroups.get_group(i)
-        if g is None:
+        group = SkillGroups.get_group(index)
+        if group is None:
             break
-        print(f"Group[{i}] {g.name!r} skills={len(g.skills)}")
-        i += 1
-        if i > 20:
+
+        print(f"Group[{index}] {group.name!r} skills={len(group.skills)}")
+        if group.skills:
+            print(f"  first skills: {group.skills[:5]}")
+
+        index += 1
+        if index >= 20:
             break
 
     return 0

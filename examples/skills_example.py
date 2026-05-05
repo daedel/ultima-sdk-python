@@ -1,6 +1,6 @@
 """Skills example.
 
-Loads skills and prints a couple entries.
+Loads skill definitions and looks up a few sample entries.
 """
 
 from __future__ import annotations
@@ -18,16 +18,18 @@ def main() -> int:
     args = parser.parse_args()
 
     init_files(resolve_uo_root(args.uo_root), require=True)
+
     Skills.initialize()
+    for skill_id in [0, 1, 2, 10, 20, 30]:
+        info = Skills.get_skill(skill_id)
+        if info is not None:
+            print(f"Skill[{skill_id}] name={info.name!r} button={info.button_id}")
 
-    for i in [0, 1, 2, 10, 20, 30]:
-        info = Skills.get_skill(i)
-        if info:
-            print(f"Skill[{i}] name={info.name!r} button={info.button_id}")
-
-    find = Skills.find_skill("magery")
+    found = Skills.find_skill("magery")
     print(
-        "Find 'magery':", getattr(find, "skill_id", None), getattr(find, "name", None)
+        "Find 'magery':",
+        getattr(found, "skill_id", None),
+        getattr(found, "name", None),
     )
     return 0
 

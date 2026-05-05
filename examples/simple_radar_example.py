@@ -1,4 +1,7 @@
-"""Simple example showing how to read radar colors from the SDK."""
+"""Simple RadarCol example.
+
+Prints the first few radar color indices from the client data.
+"""
 
 from __future__ import annotations
 
@@ -15,10 +18,10 @@ def main() -> int:
     args = parser.parse_args()
 
     init_files(resolve_uo_root(args.uo_root), require=True)
+
     RadarCol.initialize()
-    for i in range(16):
-        color = RadarCol.get_color(i)
-        print(f"Index {i}: 0x{color:04X}")
+    for index in range(16):
+        print(f"Index {index:2d}: 0x{RadarCol.get_color(index):04X}")
     return 0
 
 

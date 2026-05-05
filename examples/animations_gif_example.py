@@ -1,6 +1,6 @@
-"""Animations + AnimationEdit example.
+"""Animations GIF example.
 
-Fetches an animation and saves it as an animated GIF.
+Loads a creature animation and writes it as an animated GIF.
 """
 
 from __future__ import annotations
@@ -24,23 +24,25 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_uo_root_arg(parser)
     add_out_arg(parser)
-    parser.add_argument("--body", type=int, default=1)
-    parser.add_argument("--action", type=int, default=0)
-    parser.add_argument("--direction", type=int, default=0)
-    parser.add_argument("--duration", type=int, default=100)
+    parser.add_argument("--body", type=int, default=1, help="Body id to load")
+    parser.add_argument("--action", type=int, default=0, help="Action index")
+    parser.add_argument("--direction", type=int, default=0, help="Direction index")
+    parser.add_argument("--duration", type=int, default=100, help="Frame duration in ms")
     args = parser.parse_args()
 
     init_files(resolve_uo_root(args.uo_root), require=True)
     out_dir = ensure_out_dir(args.out)
 
     Animations.initialize()
-    out_path = (
-        Path(out_dir) / f"anim_body{args.body}_act{args.action}_dir{args.direction}.gif"
-    )
+    out_path = Path(out_dir) / f"animation_body{args.body}_action{args.action}_dir{args.direction}.gif"
 
     try:
         ok = Animations.save_gif(
-            args.body, args.action, args.direction, out_path, duration_ms=args.duration
+            args.body,
+            args.action,
+            args.direction,
+            out_path,
+            duration_ms=args.duration,
         )
         if not ok:
             print("Animation not found")
@@ -48,15 +50,14 @@ def main() -> int:
         print(f"Wrote {out_path}")
         return 0
     except ImportError:
-        # Pillow missing; fall back to dumping the first frame as PPM.
-        anim = Animations.get_animation(args.body, args.action, args.direction)
-        if anim is None or not anim.frames:
+        animation = Animations.get_animation(args.body, args.action, args.direction)
+        if animation is None or not animation.frames:
             print("Animation not found")
             return 1
-        frame0 = anim.frames[0]
+        frame = animation.frames[0]
         ppm_path = out_path.with_suffix(".ppm")
-        saved = save_uo16_image(frame0.width, frame0.height, frame0.pixels, ppm_path)
-        print(f"Pillow not installed; wrote first frame to {saved}")
+        saved = save_uo16_image(frame.width, frame.height, frame.pixels, ppm_path)
+        print(f"Pillow not installed; wrote first frame as {saved}")
         return 0
 
 
