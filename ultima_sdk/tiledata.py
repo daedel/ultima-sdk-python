@@ -1,8 +1,28 @@
 """
 TileData module - Manages tile properties and static item data.
 Supports full read AND write (patch individual tiles + save whole file).
+
+Item tile entry layout (OldItemTileDataMul, Pack=1) — 37 bytes:
+  Offset  Field           C# Type     Python
+  0       flags           int32       uint32
+  4       weight          byte        uint8
+  5       quality         byte        uint8
+  6       miscdata        short       int16
+  8       unk2            byte        uint8
+  9       quantity        byte        uint8
+  10      anim            short       int16
+  12      unk3            byte        uint8
+  13      hue             byte        uint8
+  14      stackingoffset  byte        uint8
+  15      value           byte        uint8
+  16      height          byte        uint8
+  17-36   name            char[20]
+
+High Seas (NewItemTileDataMul) adds int32 unk1 after flags → 41 bytes.
+Land tile old = 26 bytes; land tile HS = 30 bytes (adds int32 unk1 after flags).
 """
 
+import os
 import struct
 from typing import List, Optional, Dict
 from .binary_extensions import BinaryReader
@@ -48,20 +68,22 @@ class TileFlag:
     UNKNOWNX = 0x80000000
 
 
-# Byte sizes for the two entry formats.
-_LAND_ENTRY_SIZE = 26  # uint32 flags + uint16 texture_id + 20-byte name
-_ITEM_ENTRY_SIZE = 37  # uint32 flags(4) + weight(1) + quality(1) + quantity(2)
-# + unknown(2) + value(2) + unknown(2) + height(1) + name(20)
-# = 37 bytes total. The 6 bytes after quantity are padding/
-# unknown fields present in the original EA format that must
-# be consumed on read and written as zeros on save.
-# tiledata.mul layout:
-#   512 land-tile header groups * (4-byte group header + 32 * 26-byte entries)
-#   512 item-tile header groups * (4-byte group header + 32 * 37-byte entries)
+# Entry sizes
+_LAND_ENTRY_SIZE_OLD = 26   # flags(4) + texture_id(2) + name(20)
+_LAND_ENTRY_SIZE_HS  = 30   # adds unk1(4) after flags
+_ITEM_ENTRY_SIZE_OLD = 37   # canonical OldItemTileDataMul
+_ITEM_ENTRY_SIZE_HS  = 41   # NewItemTileDataMul — adds unk1(4) after flags
+
 _LAND_GROUP_ENTRIES = 32
 _ITEM_GROUP_ENTRIES = 32
 _LAND_GROUPS = 512
 _ITEM_GROUPS = 512
+
+# Expected file size in old format
+_OLD_FILE_SIZE = (
+    _LAND_GROUPS * (4 + _LAND_GROUP_ENTRIES * _LAND_ENTRY_SIZE_OLD)
+    + _ITEM_GROUPS * (4 + _ITEM_GROUP_ENTRIES * _ITEM_ENTRY_SIZE_OLD)
+)
 
 
 class TileData:
@@ -70,6 +92,7 @@ class TileData:
     _land_tiles: List[Dict] = []
     _item_tiles: List[Dict] = []
     _initialized = False
+    _uoahs: bool = False   # True when High Seas (41-byte item entries)
 
     # ------------------------------------------------------------------
     # Load
@@ -84,13 +107,24 @@ class TileData:
             path = Files.get_file_path("tiledata.mul")
             if not path:
                 return False
+            file_size = os.path.getsize(path)
+            cls._uoahs = cls._detect_uoahs(file_size)
             with open(path, "rb") as f:
                 reader = BinaryReader(f)
                 cls._load_tiledata(reader)
-                cls._initialized = True
-                return True
+            cls._initialized = True
+            return True
         except Exception as e:
             raise FileAccessException(f"Failed to load tiledata.mul: {e}")
+
+    @staticmethod
+    def _detect_uoahs(file_size: int) -> bool:
+        """Return True if file size matches the High Seas (41-byte item) layout."""
+        hs_size = (
+            _LAND_GROUPS * (4 + _LAND_GROUP_ENTRIES * _LAND_ENTRY_SIZE_HS)
+            + _ITEM_GROUPS * (4 + _ITEM_GROUP_ENTRIES * _ITEM_ENTRY_SIZE_HS)
+        )
+        return file_size == hs_size
 
     @classmethod
     def _load_tiledata(cls, reader: BinaryReader) -> None:
@@ -107,50 +141,55 @@ class TileData:
             for _ in range(_ITEM_GROUP_ENTRIES):
                 cls._item_tiles.append(cls._read_item_tile_entry(reader))
 
-    @staticmethod
-    def _read_land_tile_entry(reader: BinaryReader) -> Dict:
+    @classmethod
+    def _read_land_tile_entry(cls, reader: BinaryReader) -> Dict:
+        flags = reader.read_uint32()
+        if cls._uoahs:
+            reader.read_uint32()  # unk1 — HS only
         return {
-            "flags": reader.read_uint32(),
+            "flags": flags,
             "texture_id": reader.read_uint16(),
             "name": reader.read_string(20, null_terminated=True).strip("\x00"),
         }
 
-    @staticmethod
-    def _read_item_tile_entry(reader: BinaryReader) -> Dict:
-        """Read one 37-byte item tile entry.
+    @classmethod
+    def _read_item_tile_entry(cls, reader: BinaryReader) -> Dict:
+        """Read one item tile entry matching OldItemTileDataMul (37 bytes).
 
-        Layout (all little-endian):
-          4  flags        uint32
-          1  weight       uint8
-          1  quality      uint8
-          2  quantity     uint16
-          2  unknown_a    uint16   (padding / unused; discarded)
-          2  value        uint16
-          2  unknown_b    uint16   (padding / unused; discarded)
-          1  height       uint8
-         20  name         char[20]
-        = 37 bytes total
-
-        Failing to consume all 37 bytes desynchronises every subsequent
-        sequential read in the same group.
+        High Seas (NewItemTileDataMul, 41 bytes) adds int32 unk1 after flags.
+        All fields are read in canonical C# struct order.
         """
-        flags = reader.read_uint32()
-        weight = reader.read_byte()
-        quality = reader.read_byte()
-        quantity = reader.read_uint16()
-        reader.read_uint16()  # unknown_a — consume, discard
-        value = reader.read_uint16()
-        reader.read_uint16()  # unknown_b — consume, discard
-        height = reader.read_byte()
-        name = reader.read_string(20, null_terminated=True).strip("\x00")
+        flags    = reader.read_uint32()          # 4
+        if cls._uoahs:
+            reader.read_uint32()                 # unk1 — HS only, 4 bytes
+        weight   = reader.read_byte()            # 1
+        quality  = reader.read_byte()            # 1
+        miscdata = reader.read_int16()           # 2  (short)
+        unk2     = reader.read_byte()            # 1
+        quantity = reader.read_byte()            # 1
+        anim     = reader.read_int16()           # 2  (short)
+        unk3     = reader.read_byte()            # 1
+        hue      = reader.read_byte()            # 1
+        stacking = reader.read_byte()            # 1
+        value    = reader.read_byte()            # 1
+        height   = reader.read_byte()            # 1
+        name     = reader.read_string(20, null_terminated=True).strip("\x00")  # 20
+        # Total old: 4+1+1+2+1+1+2+1+1+1+1+1+20 = 37 bytes ✓
+        # Total HS:  4+4+1+1+2+1+1+2+1+1+1+1+1+20 = 41 bytes ✓
         return {
-            "flags": flags,
-            "weight": weight,
-            "quality": quality,
+            "flags":    flags,
+            "weight":   weight,
+            "quality":  quality,
+            "miscdata": miscdata,
+            "unk2":     unk2,
             "quantity": quantity,
-            "value": value,
-            "height": height,
-            "name": name,
+            "anim":     anim,
+            "unk3":     unk3,
+            "hue":      hue,
+            "stackingoffset": stacking,
+            "value":    value,
+            "height":   height,
+            "name":     name,
         }
 
     # ------------------------------------------------------------------
@@ -199,8 +238,9 @@ class TileData:
     def set_item_tile(cls, id: int, **fields) -> None:
         """Patch one or more fields on an item tile entry (in memory).
 
-        Recognised keys: ``flags``, ``weight``, ``quality``, ``quantity``,
-        ``value``, ``height``, ``name``.
+        Recognised keys: ``flags``, ``weight``, ``quality``, ``miscdata``,
+        ``unk2``, ``quantity``, ``anim``, ``unk3``, ``hue``,
+        ``stackingoffset``, ``value``, ``height``, ``name``.
         Call :meth:`save` to persist changes.
         """
         if not cls._initialized:
@@ -231,24 +271,33 @@ class TileData:
 
     @classmethod
     def _encode_item_entry(cls, entry: Dict) -> bytes:
-        """Encode one item tile entry back to the 37-byte on-disk format.
+        """Encode one item tile entry back to the 37-byte OldItemTileDataMul layout.
 
-        Writes two zero uint16 padding fields (unknown_a, unknown_b) to keep
-        the entry aligned with the original EA layout.
+        Field order matches the C# struct exactly — unknown fields are preserved
+        where present in the dict, otherwise written as zero.
         """
         return (
             struct.pack(
-                "<IBBHHH",
+                "<IBBhBBhBBBBB",
                 entry["flags"],
                 entry["weight"],
                 entry["quality"],
+                entry.get("miscdata", 0),
+                entry.get("unk2", 0),
                 entry["quantity"],
-                0,  # unknown_a padding
+                entry.get("anim", 0),
+                entry.get("unk3", 0),
+                entry.get("hue", 0),
+                entry.get("stackingoffset", 0),
                 entry["value"],
+                entry["height"],
             )
-            + struct.pack("<HB", 0, entry["height"])  # unknown_b padding + height
             + cls._pack_name(entry["name"])
         )
+        # struct layout breakdown:
+        # I=flags(4) B=weight(1) B=quality(1) h=miscdata(2) B=unk2(1)
+        # B=quantity(1) h=anim(2) B=unk3(1) B=hue(1) B=stacking(1)
+        # B=value(1) B=height(1) → 17 bytes + name(20) = 37 bytes ✓
 
     # ------------------------------------------------------------------
     # Save
@@ -260,6 +309,9 @@ class TileData:
 
         If *path* is ``None``, overwrites the original file returned by
         :func:`Files.get_file_path("tiledata.mul")`.
+
+        Note: always saves in OldItemTileDataMul (37-byte) format regardless
+        of whether the source was High Seas — UOAHS write support is a TODO.
         """
         if not cls._initialized:
             cls.initialize()

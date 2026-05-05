@@ -1,204 +1,107 @@
 """
-Gumps module - Manages UI gump (interface) graphics.
+Gumps module - Reads gump images from gumpart.mul / gumpart.idx.
+
+RLE format (each row):
+  Lookup table: height ushort values, each is a ushort-array index into the
+                RLE data (multiply by 2 to get byte offset from data start).
+  RLE stream:   pairs of (color: ushort, run: ushort)  — color FIRST per C# ref.
+
+Width and height come from the INDEX extra field, NOT from the data block.
+  extra >> 16 & 0xFFFF  = width
+  extra & 0xFFFF        = height
+
+Every non-zero color must have bit 15 (0x8000) set for the display layer
+to treat it as opaque (15-bit RGB, bit-15 = opacity).
 """
 
-from pathlib import Path
-from typing import Optional, Protocol, runtime_checkable
+import struct
+from typing import Optional, Tuple, List
+from .file_index import FileIndex
 from .files import Files
 from .exceptions import FileAccessException
 
-import struct
-
-from .rendering import image_from_pixels
-
-
-class GumpData:
-    """Represents a gump image."""
-
-    def __init__(self, gump_id: int, width: int, height: int, pixels: bytes):
-        self.gump_id = gump_id
-        self.width = width
-        self.height = height
-        self.pixels = pixels
-
-    def to_image(self):
-        """Convert this gump's pixels to a Pillow image.
-
-        Gump pixels are typically 16-bit 5-5-5 (2 bytes per pixel).
-        """
-        return image_from_pixels(self.width, self.height, self.pixels)
-
 
 class Gumps:
-    """Static class for managing gump data."""
+    """Static class for loading gump images."""
 
-    @runtime_checkable
-    class _IndexLike(Protocol):
-        def read_raw(self, index: int) -> Optional[bytes]:  # pragma: no cover
-            ...
-
-    _index: Optional[_IndexLike] = None
-    _initialized = False
+    _index: Optional[FileIndex] = None
+    _initialized: bool = False
 
     @classmethod
-    def initialize(
-        cls, idx_path: str | None = None, mul_path: str | None = None
-    ) -> bool:
-        """Initialize gump index."""
+    def initialize(cls) -> bool:
         if cls._initialized:
             return True
-
         try:
-            if idx_path is None:
-                idx_path = Files.get_file_path("gumpidx.mul")
-            if mul_path is None:
-                mul_path = Files.get_file_path("gumpart.mul")
-
-            from .verdata_ids import IDS as VERDATA_IDS
-
-            if idx_path and mul_path:
-                from .file_index import FileIndex
-
-                cls._index = FileIndex(
-                    idx_path, mul_path, file_id=VERDATA_IDS.GUMPART_MUL
-                )
-                cls._initialized = True
-                return True
-
-            # UOP fallback (newer clients).
-            uop_path = Files.get_file_path("gumpartlegacymul.uop")
-            if uop_path:
-                from .uop import UopBackedIndex
-
-                cls._index = UopBackedIndex(
-                    uop_path,
-                    "build/gumpartlegacymul/{0:D8}.tga",
-                    has_extra=True,
-                    file_id=VERDATA_IDS.GUMPART_MUL,
-                )
-                cls._initialized = True
-                return True
-        except Exception as e:
-            raise FileAccessException(f"Failed to initialize gumps: {e}")
-
-        return False
-
-    @classmethod
-    def get_gump(cls, gump_id: int) -> Optional[GumpData]:
-        """Get gump by ID."""
-        if not cls._initialized:
-            cls.initialize()
-
-        if not cls._index:
-            return None
-
-        raw = cls._index.read_raw(gump_id)
-        if not raw:
-            return None
-
-        width, height, pixels = cls._decode_gump(raw)
-        return GumpData(gump_id=gump_id, width=width, height=height, pixels=pixels)
-
-    @classmethod
-    def save_png(cls, gump_id: int, path) -> bool:
-        """Save a gump as a PNG.
-
-        Returns True if the gump existed and was saved; False if missing.
-        """
-        try:
-            out_path = Path(path)
-        except Exception as e:
-            raise FileAccessException(f"Invalid output path: {e}")
-
-        g = cls.get_gump(int(gump_id))
-        if g is None:
-            return False
-
-        try:
-            img = g.to_image()
-            img.save(str(out_path), format="PNG")
+            idx_path = Files.get_file_path("gumpidx.mul")
+            mul_path = Files.get_file_path("gumpart.mul")
+            if not idx_path or not mul_path:
+                return False
+            cls._index = FileIndex(idx_path, mul_path, entry_size=12)
+            cls._initialized = True
             return True
         except Exception as e:
-            raise FileAccessException(f"Failed to save gump PNG: {e}")
+            raise FileAccessException(f"Failed to initialize Gumps: {e}")
 
-    @staticmethod
-    def _decode_gump(data: bytes) -> tuple[int, int, bytes]:
-        """Decode a gump entry.
+    @classmethod
+    def get_gump(
+        cls, id: int
+    ) -> Optional[Tuple[List[List[int]], int, int]]:
+        """Return (pixels_2d, width, height) for gump *id*, or None.
 
-        Supports:
-        - Test/fixture raw format: uint16 width, uint16 height, then width*height*2 bytes of UO16 pixels.
-        - Best-effort classic gump RLE: int32 width, int32 height, int32[height] lookup table,
-          then (run:uint16, color:uint16) pairs for each scanline.
-
-        NOTE: classic gumpart.mul RLE packet format is (run, color) — run count
-        first, then the 16-bit BGR-555 color value. This is the opposite of art.mul
-        static RLE which uses (xoffset, run_length) headers.
+        pixels_2d is a list of *height* rows, each a list of *width* ushort
+        color values with bit 15 set for opaque pixels (0 = transparent).
         """
-        # Raw test format (matches `tests/test_art_decode.py` style fixtures).
-        if len(data) >= 4:
-            w_u16, h_u16 = struct.unpack_from("<HH", data, 0)
-            if w_u16 > 0 and h_u16 > 0:
-                expected = 4 + (w_u16 * h_u16 * 2)
-                if len(data) == expected:
-                    return w_u16, h_u16, data[4:]
+        if not cls._initialized:
+            cls.initialize()
+        if cls._index is None:
+            return None
 
-        # Classic RLE gump format.
-        if len(data) < 8:
-            raise ValueError("Gump data too short")
+        # read_raw must return (data_bytes, extra) so we can get w/h.
+        result = cls._index.read_raw(id)
+        if result is None:
+            return None
+        data, extra = result  # extra is the 3rd int32 from the .idx entry
 
-        width, height = struct.unpack_from("<ii", data, 0)
-        if width <= 0 or height <= 0:
-            raise ValueError("Invalid gump dimensions")
-        if width > 8192 or height > 8192:
-            raise ValueError("Unreasonable gump dimensions")
+        # Width and height are packed into the extra field.
+        width  = (extra >> 16) & 0xFFFF
+        height = extra & 0xFFFF
+        if width == 0 or height == 0:
+            return None
 
-        lookup_base = 8
-        if len(data) < lookup_base + (height * 4):
-            raise ValueError("Gump data missing lookup table")
+        # The data block begins with a lookup table: height × ushort values.
+        # Each value is a ushort-array index; multiply by 2 → byte offset
+        # from the start of the RLE data (i.e. from byte 0 of `data`).
+        lookup_count = height
+        lookup_bytes = lookup_count * 2
+        if len(data) < lookup_bytes:
+            return None
 
-        lookups = struct.unpack_from(f"<{height}i", data, lookup_base)
-        run_base = lookup_base + (height * 4)
+        lookups = struct.unpack_from(f"<{lookup_count}H", data, 0)
+        rle_data = data  # row offsets are relative to data[0], ushort-indexed
 
-        def try_decode(offset_unit: int) -> Optional[bytes]:
-            out = bytearray(width * height * 2)
-            for y in range(height):
-                off = lookups[y]
-                if off < 0:
-                    continue
-                pos = run_base + (off * offset_unit)
-                if pos < run_base or pos > len(data):
-                    return None
+        pixels = []
+        for y in range(height):
+            row_byte_offset = lookups[y] * 2   # ushort index → byte offset
+            pos = row_byte_offset
+            row: List[int] = []
+            cur_x = 0
+            while cur_x < width:
+                if pos + 4 > len(rle_data):
+                    break
+                # C# order: color = dat[count++]; run = dat[count++]
+                color, run = struct.unpack_from("<HH", rle_data, pos)
+                pos += 4
+                if run == 0:
+                    # Explicit zero-run — advance to end of row
+                    break
+                # Set bit 15 (opaque) on non-zero colors
+                if color != 0:
+                    color ^= 0x8000
+                row.extend([color] * run)
+                cur_x += run
+            # Pad row to exact width if data was short
+            if len(row) < width:
+                row.extend([0] * (width - len(row)))
+            pixels.append(row[:width])
 
-                x = 0
-                # Decode (run, color) pairs until we fill the row or hit bounds.
-                # gumpart.mul RLE format: run count first, then BGR-555 color value.
-                while x < width:
-                    if pos + 4 > len(data):
-                        break
-                    run, color = struct.unpack_from("<HH", data, pos)
-                    pos += 4
-                    if run == 0:
-                        break
-
-                    if color == 0:
-                        x += run
-                        continue
-
-                    # Write run pixels (UO16) into output buffer.
-                    end_x = min(width, x + run)
-                    for xi in range(x, end_x):
-                        out_index = (y * width + xi) * 2
-                        out[out_index : out_index + 2] = struct.pack("<H", color)
-                    x += run
-
-            return bytes(out)
-
-        # In different client variants the lookup offsets are stored in different units.
-        # Try dword-unit first, then byte-unit.
-        pixels = try_decode(4)
-        if pixels is None:
-            pixels = try_decode(1)
-        if pixels is None:
-            raise ValueError("Unsupported gump data format")
-
-        return width, height, pixels
+        return pixels, width, height
