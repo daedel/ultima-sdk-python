@@ -119,6 +119,10 @@ class Gumps:
         The returned data object must support .to_image() -> PIL Image.
         Raises exceptions for invalid paths or other I/O errors.
         """
+                try:
+            out_path = Path(path)
+        except Exception as e:
+            raise FileAccessException(f"Invalid output path: {e}")
         data = cls.get_gump(id)
         if data is None:
             return False
