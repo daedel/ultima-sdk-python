@@ -18,21 +18,39 @@ Every non-zero color must have bit 15 (0x8000) set for the display layer
 to treat it as opaque (15-bit RGB, bit-15 = opacity).
 """
 import struct
-from dataclasses import dataclass
-from typing import Optional, Tuple, List
+from typing import Optional, List, NamedTuple
 from pathlib import Path
 from .file_index import FileIndex
 from .files import Files
 from .exceptions import FileAccessException
 
 
-@dataclass
-class GumpImage:
-    """Result object returned by get_gump."""
+class GumpImage(NamedTuple):
+    """Result object returned by get_gump.
+
+    Supports both tuple unpacking (pixels, width, height = g) for backward
+    compatibility and attribute access (g.width, g.height) for new code.
+    Also provides to_image() for save_png() integration.
+    """
 
     pixels: List[List[int]]
     width: int
     height: int
+
+    def to_image(self):
+        """Convert pixel data to a PIL Image (RGBA)."""
+        from PIL import Image
+
+        img = Image.new("RGBA", (self.width, self.height))
+        pix = img.load()
+        for y, row in enumerate(self.pixels):
+            for x, color in enumerate(row):
+                if color:
+                    r = ((color >> 10) & 0x1F) << 3
+                    g = ((color >> 5) & 0x1F) << 3
+                    b = (color & 0x1F) << 3
+                    pix[x, y] = (r, g, b, 255)
+        return img
 
 
 class Gumps:
@@ -84,22 +102,15 @@ class Gumps:
 
     @classmethod
     def save_png(cls, id: int, path: str | Path) -> bool:
-        """Render gump to PNG file."""
-        data = cls.get_gump(id)
-        if data is None:
-            return False
-        try:
-            from PIL import Image
+        """Render gump to PNG file.
 
-            img = Image.new("RGBA", (data.width, data.height))
-            pix = img.load()
-            for y, row in enumerate(data.pixels):
-                for x, color in enumerate(row):
-                    if color:
-                        r = ((color >> 10) & 0x1F) << 3
-                        g = ((color >> 5) & 0x1F) << 3
-                        b = (color & 0x1F) << 3
-                        pix[x, y] = (r, g, b, 255)
+        The returned data object must support .to_image() -> PIL Image.
+        """
+        try:
+            data = cls.get_gump(id)
+            if data is None:
+                return False
+            img = data.to_image()
             img.save(path, "PNG")
             return True
         except Exception:
@@ -109,8 +120,7 @@ class Gumps:
     def get_gump(cls, id: int) -> Optional[GumpImage]:
         """Return GumpImage for gump *id*, or None.
 
-        GumpImage.pixels is a list of *height* rows, each a list of *width*
-        ushort color values with bit 15 set for opaque pixels (0 = transparent).
+        GumpImage is a NamedTuple so both tuple unpacking and attribute access work.
         """
         if not cls._initialized:
             cls.initialize()
