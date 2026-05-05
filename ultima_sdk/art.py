@@ -33,26 +33,40 @@ class ArtTile(NamedTuple):
     Also provides to_image() for save_png() integration.
     """
 
-    pixels: bytes
+        pixels: object  # bytes (raw) or List[List[int]] (MUL 2D rows)
     width: int
     height: int
 
-    def to_image(self):
-        """Convert pixel data to a PIL Image (RGBA)."""
+        def to_image(self):
+        """Convert pixel data to a PIL Image (RGBA).
+        Supports both raw bytes (from _decode_raw_static) and
+        2D list of rows (from _decode_mul_static)."""
         from PIL import Image
         img = Image.new("RGBA", (self.width, self.height))
         pix = img.load()
-        for y in range(self.height):
-            for x in range(self.width):
-                offset = (y * self.width + x) * 2
-                if offset + 2 > len(self.pixels):
-                    continue
-                (color,) = struct.unpack_from("<H", self.pixels, offset)
-                if color:
-                    r = ((color >> 10) & 0x1F) << 3
-                    g = ((color >> 5) & 0x1F) << 3
-                    b = (color & 0x1F) << 3
-                    pix[x, y] = (r, g, b, 255)
+        if isinstance(self.pixels, (bytes, bytearray)):
+            # Raw bytes format
+            for y in range(self.height):
+                for x in range(self.width):
+                    offset = (y * self.width + x) * 2
+                    if offset + 2 > len(self.pixels):
+                        continue
+                    (color,) = struct.unpack_from("<H", self.pixels, offset)
+                    if color:
+                        r = ((color >> 10) & 0x1F) << 3
+                        g = ((color >> 5) & 0x1F) << 3
+                        b = (color & 0x1F) << 3
+                        pix[x, y] = (r, g, b, 255)
+        else:
+            # 2D list of rows format
+            for y in range(self.height):
+                for x in range(self.width):
+                    color = self.pixels[y][x]
+                    if color:
+                        r = ((color >> 10) & 0x1F) << 3
+                        g = ((color >> 5) & 0x1F) << 3
+                        b = (color & 0x1F) << 3
+                        pix[x, y] = (r, g, b, 255)
         return img
 
 
@@ -288,7 +302,7 @@ class Art:
         lookups = struct.unpack_from(f"<{height}H", data, pos)
         pos += lookup_bytes
         pixel_data_start = pos
-        out = bytearray(width * height * 2)
+                rows: List[List[int]] = [[0] * width for _ in range(height)]
         for y in range(height):
             rle_pos = pixel_data_start + lookups[y] * 2
             x = 0
@@ -307,10 +321,9 @@ class Art:
                     rle_pos += 2
                     if pixel != 0:
                         pixel |= 0x8000
-                    out_idx = (y * width + x) * 2
-                    struct.pack_into("<H", out, out_idx, pixel)
-                    x += 1
-        return ArtTile(pixels=bytes(out), width=width, height=height)
+                    rows[y][x] = pixel
+                                                            x += 1
+                return ArtTile(pixels=rows, width=width, height=height)
 
     @classmethod
     def apply_verdata_patch(cls, block_id: int, data: bytes, extra: int = 0) -> None:
