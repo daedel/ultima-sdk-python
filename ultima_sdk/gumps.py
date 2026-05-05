@@ -22,7 +22,7 @@ Every non-zero color must have bit 15 (0x8000) set for the display layer
 to treat it as opaque (15-bit RGB, bit-15 = opacity).
 """
 import struct
-from typing import Optional, List, NamedTuple
+from typing import Optional, NamedTuple
 from pathlib import Path
 from .file_index import FileIndex
 from .files import Files
@@ -117,7 +117,7 @@ class Gumps:
         Raises FileAccessException for invalid paths or other I/O errors.
         """
         try:
-            out_path = Path(path)
+            Path(path)
         except Exception as e:
             raise FileAccessException(f"Invalid output path: {e}")
         data = cls.get_gump(id)
