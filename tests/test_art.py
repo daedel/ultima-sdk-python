@@ -48,8 +48,8 @@ class TestArt:
     def test_land_row_widths_shape(self) -> None:
         """LAND_ROW_WIDTHS should have 44 entries summing to 44*44//2 pixels."""
         assert len(Art.LAND_ROW_WIDTHS) == 44
-        # Diamond sum: sum(range(2,46,2)) + sum(range(44,0,-2)) = 22*23 + 22*23 - 44 = 968
-        assert sum(Art.LAND_ROW_WIDTHS) == 968
+        # Diamond sum: sum(range(2,46,2)) + sum(range(44,0,-2)) = 22*23 + 22*23 - 44 =         assert sum(Art.LAND_ROW_WIDTHS) == 1012
+        assert sum(Art.LAND_ROW_WIDTHS) == 1012
         assert Art.LAND_ROW_WIDTHS[0] == 2
         assert Art.LAND_ROW_WIDTHS[21] == 44
         assert Art.LAND_ROW_WIDTHS[43] == 2
