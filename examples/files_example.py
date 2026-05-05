@@ -6,7 +6,6 @@ Shows how to initialize Files and resolve known UO data filenames.
 from __future__ import annotations
 
 import argparse
-import os
 from pathlib import Path
 
 from ultima_sdk.files import Files
