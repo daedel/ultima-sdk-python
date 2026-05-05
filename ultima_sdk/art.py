@@ -160,3 +160,39 @@ class Art:
             pixels.append(row)
 
         return pixels, width, height
+
+    # ------------------------------------------------------------------
+    # Verdata patch integration
+    # ------------------------------------------------------------------
+
+    # Overlay cache: maps mul-file id (land=id, static=id+0x4000) -> raw bytes.
+    # Populated by apply_verdata_patch(); checked before hitting _index.
+    _patch_cache: dict = {}
+
+    @classmethod
+    def _get_raw_data(cls, mul_id: int) -> Optional[bytes]:
+        """Read raw bytes for mul_id, checking the verdata patch cache first."""
+        if mul_id in cls._patch_cache:
+            return cls._patch_cache[mul_id]
+        if cls._index is None:
+            return None
+        return cls._index.read_raw_data(mul_id)
+
+    @classmethod
+    def apply_verdata_patch(cls, block_id: int, data: bytes, extra: int = 0) -> None:
+        """Cache raw verdata patch bytes for a land or static art tile.
+
+        block_id < 0x4000  -> land tile   (mul id = block_id)
+        block_id >= 0x4000 -> static tile (mul id = block_id, already offset)
+
+        Subsequent calls to get_land_tile() / get_static_tile() will use the
+        patched bytes instead of reading from art.mul via _index.
+
+        extra holds the artidx extra field (width<<16|height for statics) and
+        is stored under (block_id, 'extra') for callers that need dimensions.
+        """
+        if not cls._initialized:
+            cls.initialize()
+        cls._patch_cache[block_id] = data
+        if extra:
+            cls._patch_cache[(block_id, 'extra')] = extra
