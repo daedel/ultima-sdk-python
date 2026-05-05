@@ -2,13 +2,13 @@
 Gumps module - Reads gump images from gumpart.mul / gumpart.idx.
 
 RLE format (each row):
-  Lookup table: height ushort values, each is a ushort-array index into the
-               RLE data (multiply by 2 to get byte offset from data start).
-  RLE stream:  pairs of (color: ushort, run: ushort) -- color FIRST per C# ref.
+    Lookup table: height ushort values, each is a ushort-array index into the
+                  RLE data (multiply by 2 to get byte offset from data start).
+    RLE stream:   pairs of (color: ushort, run: ushort) -- color FIRST per C# ref.
 
 Width and height come from the INDEX extra field, NOT from the data block.
-  extra >> 16 & 0xFFFF = width
-  extra & 0xFFFF       = height
+    extra >> 16 & 0xFFFF  = width
+    extra & 0xFFFF        = height
 
 Every non-zero color must have bit 15 (0x8000) set for the display layer
 to treat it as opaque (15-bit RGB, bit-15 = opacity).
@@ -47,7 +47,8 @@ class Gumps:
 
     @classmethod
     def get_gump(
-        cls, id: int
+        cls,
+        id: int
     ) -> Optional[Tuple[List[List[int]], int, int]]:
         """Return (pixels_2d, width, height) for gump *id*, or None.
 
@@ -63,15 +64,16 @@ class Gumps:
         else:
             if cls._index is None:
                 return None
-            # read_raw must return (data_bytes, extra) so we can get w/h.
-            result = cls._index.read_raw(id)
+            # Use read_raw_with_extra() so we get both data bytes AND the
+            # index extra field (which encodes width and height for gumps).
+            result = cls._index.read_raw_with_extra(id)
             if result is None:
                 return None
             data, extra = result
 
         # Width and height are packed into the extra field.
         width  = (extra >> 16) & 0xFFFF
-        height = extra & 0xFFFF
+        height =  extra        & 0xFFFF
         if width == 0 or height == 0:
             return None
 
@@ -82,12 +84,13 @@ class Gumps:
         lookup_bytes = lookup_count * 2
         if len(data) < lookup_bytes:
             return None
-        lookups = struct.unpack_from(f"<{lookup_count}H", data, 0)
-        rle_data = data  # row offsets are relative to data[0], ushort-indexed
+
+        lookups  = struct.unpack_from(f"<{lookup_count}H", data, 0)
+        rle_data = data   # row offsets are relative to data[0], ushort-indexed
 
         pixels = []
         for y in range(height):
-            row_byte_offset = lookups[y] * 2  # ushort index -> byte offset
+            row_byte_offset = lookups[y] * 2   # ushort index -> byte offset
             pos = row_byte_offset
             row: List[int] = []
             cur_x = 0
@@ -97,33 +100,29 @@ class Gumps:
                 # C# order: color = dat[count++]; run = dat[count++]
                 color, run = struct.unpack_from("<HH", rle_data, pos)
                 pos += 4
-                if run == 0:
-                    # Explicit zero-run -- advance to end of row
-                    break
-                # Set bit 15 (opaque) on non-zero colors
                 if color != 0:
-                    color ^= 0x8000
-                row.extend([color] * run)
-                cur_x += run
-            # Pad row to exact width if data was short
-            if len(row) < width:
-                row.extend([0] * (width - len(row)))
-            pixels.append(row[:width])
+                    color |= 0x8000   # set opacity bit
+                for _ in range(run):
+                    row.append(color)
+                    cur_x += 1
+                    if cur_x >= width:
+                        break
+            # Pad any short rows with transparent pixels.
+            while len(row) < width:
+                row.append(0)
+            pixels.append(row)
 
         return pixels, width, height
 
-    # ------------------------------------------------------------------
-    # Verdata patch integration
-    # ------------------------------------------------------------------
-
     @classmethod
-    def apply_verdata_patch(cls, block_id: int, data: bytes, extra: int = 0) -> None:
+    def apply_verdata_patch(cls, block_id: int, data: bytes, extra: int) -> None:
         """Cache raw verdata patch bytes for a gump.
 
         block_id is the gump id (same as the id passed to get_gump()).
         data is the raw RLE bytes from gumps.mul.
-        extra encodes width and height: (extra >> 16) & 0xFFFF = width,
-                                         extra & 0xFFFF = height.
+        extra encodes width and height:
+            (extra >> 16) & 0xFFFF = width,
+            extra & 0xFFFF = height.
 
         Subsequent calls to get_gump(block_id) will decode from these bytes
         instead of reading from gumps.mul via _index.
