@@ -60,7 +60,7 @@ class Hues:
         while pos + _GROUP_SIZE <= len(data):
             pos += _GROUP_HEADER_SIZE  # skip group header
             for _ in range(_ENTRIES_PER_GROUP):
-                entry_start = pos
+                
                 # Read all 32 colors as one contiguous block — THEN metadata.
                 raw_colors = struct.unpack_from("<32H", data, pos)
                 pos += _COLORS_PER_ENTRY * 2   # 64 bytes
