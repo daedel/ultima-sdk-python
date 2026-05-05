@@ -8,12 +8,15 @@ Land tile geometry:
      Each row is left-padded so the diamond is centred in a 44x44 bounding box.
      Pixel values read directly from the stream, ORed with 0x8000 (opaque bit).
 
-Static art:
-     4-byte header (ignored), then standard RLE -- the existing parsing is correct.
-     Same 0x8000 alpha bit applies.
+Static art (MUL format):
+     4-byte header (ignored), then <HH width height>, then RLE.
+
+Static art (UOP format):
+     Payload starts directly with <HH width height> followed by raw pixels.
+     No 4-byte ignored header, no lookup table, no RLE.
 """
 import struct
-from typing import Optional, List, Tuple, NamedTuple
+from typing import Optional, List, NamedTuple
 from pathlib import Path
 from .file_index import FileIndex
 from .files import Files
@@ -105,6 +108,16 @@ class Art:
         return False
 
     @classmethod
+    def _is_uop(cls) -> bool:
+        """Return True if the active index is a UOP-backed index."""
+        try:
+            from .uop import UopBackedIndex
+
+            return isinstance(cls._index, UopBackedIndex)
+        except Exception:
+            return False
+
+    @classmethod
     def get_art(cls, id: int) -> Optional[ArtTile]:
         """Backward compatibility alias."""
         if id >= 0x4000:
@@ -182,15 +195,51 @@ class Art:
         ArtTile is a NamedTuple so both tuple unpacking and attribute access work:
             pixels, width, height = tile  # backward compat
             tile.width                    # new code / UOP fallback tests
+
+        MUL format: data starts with 4 ignored bytes, then <HH w h>, then RLE.
+        UOP format: data starts directly with <HH w h> followed by raw pixels.
         """
         if not cls._initialized:
             cls.initialize()
         data = cls._get_raw_data(id + 0x4000)
         if data is None or len(data) < 4:
             return None
-        pos = 4
-        if pos + 4 > len(data):
+
+        if cls._is_uop():
+            return cls._decode_uop_static(data)
+        else:
+            return cls._decode_mul_static(data)
+
+    @classmethod
+    def _decode_uop_static(cls, data: bytes) -> Optional[ArtTile]:
+        """Decode UOP static art payload: <HH w h> + raw pixels (row-major)."""
+        if len(data) < 4:
             return None
+        width, height = struct.unpack_from("<HH", data, 0)
+        if width == 0 or height == 0:
+            return None
+        pixel_bytes = data[4:]
+        pixels: List[List[int]] = []
+        for y in range(height):
+            row: List[int] = []
+            for x in range(width):
+                offset = (y * width + x) * 2
+                if offset + 2 > len(pixel_bytes):
+                    row.append(0)
+                else:
+                    (color,) = struct.unpack_from("<H", pixel_bytes, offset)
+                    if color != 0:
+                        color |= 0x8000
+                    row.append(color)
+            pixels.append(row)
+        return ArtTile(pixels=pixels, width=width, height=height)
+
+    @classmethod
+    def _decode_mul_static(cls, data: bytes) -> Optional[ArtTile]:
+        """Decode MUL static art payload: 4 ignored bytes, <HH w h>, RLE."""
+        if len(data) < 8:
+            return None
+        pos = 4  # skip 4-byte ignored header
         width, height = struct.unpack_from("<HH", data, pos)
         pos += 4
         if width == 0 or height == 0:
