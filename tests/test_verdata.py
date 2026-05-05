@@ -26,7 +26,7 @@ def test_art_get_art_uses_verdata_patch(tmp_path):
     entry = struct.pack(
         "<iiiii",
         VERDATA_IDS.ART_MUL,
-        0,  # block_id
+                0x4000,  # block_id: first static art tile (0x4000 = static tile 0)
         data_off,
         len(patch_bytes),
         0,
