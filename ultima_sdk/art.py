@@ -27,16 +27,16 @@ from .exceptions import FileAccessException
 class ArtTile(NamedTuple):
     """Result object returned by get_static_tile / get_art.
 
-    pixels: raw bytes (width * height * 2 bytes of 16-bit LE colours).
+    pixels: raw bytes (width * height * 2 bytes of 16-bit LE colours),
+    OR a list of rows (List[List[int]]) for MUL-decoded tiles.
     Supports both tuple unpacking (pixels, width, height = tile) for backward
     compatibility and attribute access (tile.width, tile.height) for new code.
     Also provides to_image() for save_png() integration.
     """
 
-        pixels: object  # bytes (raw) or List[List[int]] (MUL 2D rows)
+    pixels: object  # bytes (raw) or List[List[int]] (2D MUL rows)
     width: int
     height: int
-
         def to_image(self):
         """Convert pixel data to a PIL Image (RGBA).
         Supports both raw bytes (from _decode_raw_static) and
