@@ -1,138 +1,209 @@
 """ Gumps module - Reads gump images from gumpart.mul / gumpart.idx.
 
-RLE format (each row):
-    Lookup table: height ushort values, each is a ushort-array index into the
-                  RLE data (multiply by 2 to get byte offset from data start).
-    RLE stream:   pairs of (color: ushort, run: ushort) -- color FIRST per C# ref.
+MUL/IDX format (each row):
+     Lookup table: height ushort values, each is a ushort-array index into the
+                   RLE data (multiply by 2 to get byte offset from data start).
+     RLE stream:   pairs of (color: ushort, run: ushort) -- color FIRST per C# ref.
 
-Width and height come from the INDEX extra field, NOT from the data block.
-    extra >> 16 & 0xFFFF = width
-    extra & 0xFFFF       = height
+     Width and height come from the INDEX extra field, NOT from the data block.
+         extra >> 16 & 0xFFFF = width
+         extra & 0xFFFF       = height
+
+UOP format (gumpartlegacymul.uop with has_extra=True):
+     After stripping the 8-byte prefix (handled by UopFile.read_raw),
+     the payload begins with struct.pack("<HH", width, height) followed
+     by raw 16-bit pixel data (row-major, no lookup table, no RLE).
 
 Every non-zero color must have bit 15 (0x8000) set for the display layer
 to treat it as opaque (15-bit RGB, bit-15 = opacity).
 """
-
 import struct
+from dataclasses import dataclass
 from typing import Optional, Tuple, List
 from pathlib import Path
-
 from .file_index import FileIndex
 from .files import Files
 from .exceptions import FileAccessException
 
 
+@dataclass
+class GumpImage:
+    """Result object returned by get_gump."""
+
+    pixels: List[List[int]]
+    width: int
+    height: int
+
+
 class Gumps:
     """Static class for loading gump images."""
 
-    _index: Optional[FileIndex] = None
+    _index: Optional[object] = None
     _initialized: bool = False
 
     # Overlay cache: maps gump id -> (raw_bytes, extra) from verdata patches.
     _patch_cache: dict = {}
 
     @classmethod
-    def initialize(cls, idx_path: Optional[str] = None, mul_path: Optional[str] = None) -> bool:
-        """Initialize Gumps static state. Optionally accepts paths for testing."""
+    def initialize(
+        cls, idx_path: Optional[str] = None, mul_path: Optional[str] = None
+    ) -> bool:
+        """Initialize Gumps static state.
+
+        Tries MUL files first; if unavailable falls back to gumpartlegacymul.uop.
+        Optionally accepts explicit paths for testing.
+        """
         if cls._initialized and not idx_path and not mul_path:
             return True
+        # --- MUL path ---
         try:
-            idx_path = idx_path or Files.get_file_path("gumpidx.mul")
-            mul_path = mul_path or Files.get_file_path("gumpart.mul")
-            if not idx_path or not mul_path:
-                return False
-            cls._index = FileIndex(idx_path, mul_path, entry_size=12)
-            cls._initialized = True
-            return True
+            resolved_idx = idx_path or Files.get_file_path("gumpidx.mul")
+            resolved_mul = mul_path or Files.get_file_path("gumpart.mul")
+            if resolved_idx and resolved_mul:
+                cls._index = FileIndex(resolved_idx, resolved_mul, entry_size=12)
+                cls._initialized = True
+                return True
         except Exception as e:
             raise FileAccessException(f"Failed to initialize Gumps: {e}")
+        # --- UOP fallback ---
+        try:
+            from .uop import UopBackedIndex
+
+            uop_path = Files.get_file_path("gumpartlegacymul.uop")
+            if uop_path:
+                cls._index = UopBackedIndex(
+                    uop_path,
+                    "build/gumpartlegacymul/{0:D8}.tga",
+                    has_extra=True,
+                )
+                cls._initialized = True
+                return True
+        except Exception as e:
+            raise FileAccessException(f"Failed to initialize Gumps via UOP: {e}")
+        return False
 
     @classmethod
     def save_png(cls, id: int, path: str | Path) -> bool:
         """Render gump to PNG file."""
         data = cls.get_gump(id)
-        if data is None: return False
+        if data is None:
+            return False
         try:
             from PIL import Image
-            pixels, w, h = data
-            img = Image.new("RGBA", (w, h))
+
+            img = Image.new("RGBA", (data.width, data.height))
+            pix = img.load()
+            for y, row in enumerate(data.pixels):
+                for x, color in enumerate(row):
+                    if color:
+                        r = ((color >> 10) & 0x1F) << 3
+                        g = ((color >> 5) & 0x1F) << 3
+                        b = (color & 0x1F) << 3
+                        pix[x, y] = (r, g, b, 255)
             img.save(path, "PNG")
             return True
-        except Exception: return False
+        except Exception:
+            return False
 
     @classmethod
-    def get_gump(
-        cls, id: int
-    ) -> Optional[Tuple[List[List[int]], int, int]]:
-        """Return (pixels_2d, width, height) for gump *id*, or None.
-        pixels_2d is a list of *height* rows, each a list of *width* ushort color
-        values with bit 15 set for opaque pixels (0 = transparent).
+    def get_gump(cls, id: int) -> Optional[GumpImage]:
+        """Return GumpImage for gump *id*, or None.
+
+        GumpImage.pixels is a list of *height* rows, each a list of *width*
+        ushort color values with bit 15 set for opaque pixels (0 = transparent).
         """
         if not cls._initialized:
             cls.initialize()
 
-        # Check verdata patch cache first, then fall through to index.
+        # Check verdata patch cache first.
         if id in cls._patch_cache:
             data, extra = cls._patch_cache[id]
-        else:
-            if cls._index is None:
-                return None
+            width = (extra >> 16) & 0xFFFF
+            height = extra & 0xFFFF
+            return cls._decode_mul_rle(data, width, height)
 
-            # Use read_raw_with_extra() so we get both data bytes AND the
-            # index extra field (which encodes width and height for gumps).
+        if cls._index is None:
+            return None
+
+        # Detect UOP path vs MUL/IDX path.
+        from .uop import UopBackedIndex
+
+        if isinstance(cls._index, UopBackedIndex):
+            return cls._decode_uop_gump(id)
+        else:
             result = cls._index.read_raw_with_extra(id)
             if result is None:
                 return None
             data, extra = result
+            width = (extra >> 16) & 0xFFFF
+            height = extra & 0xFFFF
+            return cls._decode_mul_rle(data, width, height)
 
-        # Width and height are packed into the extra field.
-        width = (extra >> 16) & 0xFFFF
-        height = extra & 0xFFFF
+    @classmethod
+    def _decode_uop_gump(cls, id: int) -> Optional[GumpImage]:
+        """Decode a gump from UOP storage.
 
+        After the UopFile strips the 8-byte has_extra prefix, the remaining
+        payload starts with struct.pack('<HH', width, height) followed by
+        raw row-major 16-bit pixel data (no lookup table, no RLE).
+        """
+        raw = cls._index.read_raw(id)
+        if raw is None or len(raw) < 4:
+            return None
+        width, height = struct.unpack_from("<HH", raw, 0)
         if width == 0 or height == 0:
             return None
+        pixel_bytes = raw[4:]
+        pixels: List[List[int]] = []
+        for y in range(height):
+            row: List[int] = []
+            for x in range(width):
+                offset = (y * width + x) * 2
+                if offset + 2 > len(pixel_bytes):
+                    row.append(0)
+                else:
+                    (color,) = struct.unpack_from("<H", pixel_bytes, offset)
+                    if color != 0:
+                        color |= 0x8000
+                    row.append(color)
+            pixels.append(row)
+        return GumpImage(pixels=pixels, width=width, height=height)
 
-        # The data block begins with a lookup table: height x ushort values.
-        # Each value is a ushort-array index; multiply by 2 -> byte offset
-        # from the start of the RLE data (i.e. from byte 0 of `data`).
+    @classmethod
+    def _decode_mul_rle(
+        cls, data: bytes, width: int, height: int
+    ) -> Optional[GumpImage]:
+        """Decode MUL-format RLE gump data into a GumpImage."""
+        if width == 0 or height == 0:
+            return None
         lookup_count = height
         lookup_bytes = lookup_count * 2
         if len(data) < lookup_bytes:
             return None
-
         lookups = struct.unpack_from(f"<{lookup_count}H", data, 0)
-        rle_data = data  # row offsets are relative to data[0], ushort-indexed
-
-        pixels = []
+        rle_data = data
+        pixels: List[List[int]] = []
         for y in range(height):
-            row_byte_offset = lookups[y] * 2  # ushort index -> byte offset
+            row_byte_offset = lookups[y] * 2
             pos = row_byte_offset
             row: List[int] = []
             cur_x = 0
             while cur_x < width:
                 if pos + 4 > len(rle_data):
                     break
-
-                # C# order: color = dat[count++]; run = dat[count++]
                 color, run = struct.unpack_from("<HH", rle_data, pos)
                 pos += 4
-
                 if color != 0:
                     color |= 0x8000
-
                 for _ in range(run):
                     if cur_x >= width:
                         break
                     row.append(color)
                     cur_x += 1
-
-            # Pad any short rows with transparent pixels.
             while len(row) < width:
                 row.append(0)
-
             pixels.append(row)
-
-        return pixels, width, height
+        return GumpImage(pixels=pixels, width=width, height=height)
 
     @classmethod
     def apply_verdata_patch(cls, block_id: int, data: bytes, extra: int) -> None:
