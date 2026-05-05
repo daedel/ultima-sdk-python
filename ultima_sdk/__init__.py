@@ -1,59 +1,48 @@
 """Ultima Online SDK package initializer.
 
-Expose common classes at package level for convenience.
-Light/guarded imports keep import-time cost low.
+Exposes common classes at package level for convenience.
+All imports are guarded so that missing optional dependencies or missing
+client data files do not prevent the package from loading.
 """
 
 __version__ = "1.1.4"
-__author__ = "UltimaWorks"
+__author__  = "UltimaWorks"
 
-# Eagerly expose common high-level classes if available; keep failures silent
+# ---------------------------------------------------------------------------
+# Explicit guarded exports: (module_dotted_path, class_name)
+# ---------------------------------------------------------------------------
 _EXPORTS = [
-    "Files",
-    "TileData",
-    "Hues",
-    "Art",
-    "Animations",
-    "Gumps",
-    "Sound",
-    "Light",
-    "Textures",
-    "Multis",
-    "Map",
-    "Skills",
-    "AnimationEdit",
-    "StringList",
-    "RadarCol",
-    "SkillGroups",
-    "FileIndex",
-    "TileMatrix",
-    "BinaryReader",
-    "Verdata",
-    "EquipConv",
+    ("ultima_sdk.files",          "Files"),
+    ("ultima_sdk.tiledata",       "TileData"),
+    ("ultima_sdk.hues",           "Hues"),
+    ("ultima_sdk.art",            "Art"),
+    ("ultima_sdk.animations",     "Animations"),
+    ("ultima_sdk.animation_edit", "AnimationEdit"),
+    ("ultima_sdk.gumps",          "Gumps"),
+    ("ultima_sdk.light",          "Light"),
+    ("ultima_sdk.textures",       "Textures"),
+    ("ultima_sdk.multis",         "Multis"),
+    ("ultima_sdk.map",            "Map"),
+    ("ultima_sdk.tile_matrix",    "TileMatrix"),
+    ("ultima_sdk.radar_col",      "RadarCol"),
+    ("ultima_sdk.file_index",     "FileIndex"),
+    ("ultima_sdk.verdata",        "Verdata"),
+    ("ultima_sdk.uop",            "UopFile"),
+    ("ultima_sdk.uop",            "UopBackedIndex"),
+    ("ultima_sdk.uop",            "create_hash"),
+    ("ultima_sdk.exceptions",     "FileAccessException"),
+    ("ultima_sdk.exceptions",     "FileParseError"),
+    ("ultima_sdk.binary_extensions", "BinaryReader"),
 ]
 
 _exported: list[str] = []
-
-for name in _EXPORTS:
+for _mod, _name in _EXPORTS:
     try:
-        module = __import__(f"ultima_sdk.{name.lower()}", fromlist=[name])
-        obj = getattr(module, name)
-        globals()[name] = obj
-        _exported.append(name)
+        import importlib as _importlib
+        _module = _importlib.import_module(_mod)
+        globals()[_name] = getattr(_module, _name)
+        _exported.append(_name)
     except Exception:
-        # defer until used
-        pass
+        pass  # defer until explicitly imported
 
 __all__ = _exported  # pyright: ignore[reportUnsupportedDunderAll]
-
-# Expose common unittest.mock helpers to tests that reference them by name
-try:
-    import builtins
-    from unittest.mock import patch, mock_open
-
-    if not hasattr(builtins, "patch"):
-        setattr(builtins, "patch", patch)
-    if not hasattr(builtins, "mock_open"):
-        setattr(builtins, "mock_open", mock_open)
-except Exception:
-    pass
