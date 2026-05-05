@@ -12,13 +12,16 @@ def test_art_get_art_uses_verdata_patch(tmp_path):
     from ultima_sdk.art import Art
     from ultima_sdk.verdata_ids import IDS as VERDATA_IDS
 
-    # Create a minimal verdata.mul with a single patch for art.mul block 0.
-    # Patch payload uses Art's supported "raw" fixture format:
-    # uint16 width, uint16 height, then width*height*2 bytes UO16 pixels.
+        # Patch payload in MUL static art format:
+    # 4-byte ignored header, uint16 width, uint16 height,
+    # height*uint16 lookup table, then RLE rows (x_offset, run, pixels..., 0,0 sentinel).
     width, height = 1, 1
     pixel_uo16 = 0x7FFF
-    patch_bytes = struct.pack("<HHH", width, height, pixel_uo16)
-
+    mul_header = b'\x00' * 4
+    wh = struct.pack("<HH", width, height)
+    lookup = struct.pack("<H", 0)  # row 0 starts at pixel_data offset 0
+    rle_row = struct.pack("<HH", 0, width) + struct.pack(f"<{width}H", pixel_uo16) + struct.pack("<HH", 0, 0)
+    patch_bytes = mul_header + wh + lookup + rle_row
     count = 1
     table_off = 4
     data_off = table_off + (count * 20)
