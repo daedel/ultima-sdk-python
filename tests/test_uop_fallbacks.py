@@ -59,7 +59,7 @@ def test_art_initialize_uses_uop_fallback(tmp_path, monkeypatch):
     uop_path.write_bytes(
         _build_uop_single_entry(
             pattern="build/artlegacymul/{0:D8}.tga",
-            entry_id=1,
+            entry_id=0,
             payload=art_payload,
         )
     )
