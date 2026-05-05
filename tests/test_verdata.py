@@ -1,5 +1,4 @@
 """Tests for verdata.mul parsing and patch application."""
-
 import struct
 
 from ultima_sdk.file_index import FileIndex
@@ -12,7 +11,7 @@ def test_art_get_art_uses_verdata_patch(tmp_path):
     from ultima_sdk.art import Art
     from ultima_sdk.verdata_ids import IDS as VERDATA_IDS
 
-        # Patch payload in MUL static art format:
+    # Patch payload in MUL static art format:
     # 4-byte ignored header, uint16 width, uint16 height,
     # height*uint16 lookup table, then RLE rows (x_offset, run, pixels..., 0,0 sentinel).
     width, height = 1, 1
@@ -21,6 +20,7 @@ def test_art_get_art_uses_verdata_patch(tmp_path):
     wh = struct.pack("<HH", width, height)
     lookup = struct.pack("<H", 0)  # row 0 starts at pixel_data offset 0
     rle_row = struct.pack("<HH", 0, width) + struct.pack(f"<{width}H", pixel_uo16) + struct.pack("<HH", 0, 0)
+
     patch_bytes = mul_header + wh + lookup + rle_row
     count = 1
     table_off = 4
@@ -29,7 +29,7 @@ def test_art_get_art_uses_verdata_patch(tmp_path):
     entry = struct.pack(
         "<iiiii",
         VERDATA_IDS.ART_MUL,
-                0x4000,  # block_id: first static art tile (0x4000 = static tile 0)
+        0x4000,  # block_id: first static art tile (0x4000 = static tile 0)
         data_off,
         len(patch_bytes),
         0,
@@ -48,6 +48,17 @@ def test_art_get_art_uses_verdata_patch(tmp_path):
     Verdata._path = None
     Art._initialized = False
     Art._index = None
+    Art._patch_cache = {}
+
+    # Initialize Art so it can find artidx.mul/art.mul.
+    Art.initialize(
+        idx_path=str(tmp_path / "artidx.mul"),
+        mul_path=str(tmp_path / "art.mul"),
+    )
+
+    # Initialize Verdata and apply patches so Art._patch_cache is populated.
+    Verdata.initialize(str(tmp_path / "verdata.mul"))
+    Verdata.apply()
 
     art = Art.get_art(16384)
     assert art is not None
