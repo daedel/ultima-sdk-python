@@ -1,22 +1,22 @@
 """ Gumps module - Reads gump images from gumpart.mul / gumpart.idx.
 
 MUL/IDX format (each row):
-        Lookup table: height ushort values, each is a ushort-array index into the
-                      RLE data (multiply by 2 to get byte offset from data start).
-        RLE stream:   pairs of (color: ushort, run: ushort) -- color FIRST per C# ref.
+    Lookup table: height ushort values, each is a ushort-array index into the
+                  RLE data (multiply by 2 to get byte offset from data start).
+    RLE stream:   pairs of (color: ushort, run: ushort) -- color FIRST per C# ref.
 
-        Width and height come from the INDEX extra field, NOT from the data block.
-            extra >> 16 & 0xFFFF = width
-            extra & 0xFFFF       = height
+    Width and height come from the INDEX extra field, NOT from the data block.
+        extra >> 16 & 0xFFFF = width
+        extra & 0xFFFF       = height
 
 Raw / test format (extra == 0):
-        Payload starts directly with <HH width height> followed by
-        width*height*2 raw 16-bit pixel bytes (row-major, no RLE).
+    Payload starts directly with <HH width height> followed by
+    width*height*2 raw 16-bit pixel bytes (row-major, no RLE).
 
 UOP format (gumpartlegacymul.uop with has_extra=True):
-        After stripping the 8-byte prefix (handled by UopFile.read_raw),
-        the payload begins with struct.pack("<HH", width, height) followed
-        by raw 16-bit pixel data (row-major, no lookup table, no RLE).
+    After stripping the 8-byte prefix (handled by UopFile.read_raw),
+    the payload begins with struct.pack("<HH", width, height) followed
+    by raw 16-bit pixel data (row-major, no lookup table, no RLE).
 
 Every non-zero color must have bit 15 (0x8000) set for the display layer
 to treat it as opaque (15-bit RGB, bit-15 = opacity).
@@ -33,8 +33,8 @@ class GumpImage(NamedTuple):
     """Result object returned by get_gump.
 
     pixels: raw bytes (width * height * 2 bytes of 16-bit LE colours).
-    Supports both tuple unpacking (pixels, width, height = g) for backward
-    compatibility and attribute access (g.width, g.height) for new code.
+    Supports both tuple unpacking (pixels, width, height = img) for backward
+    compatibility and attribute access (img.width, img.height) for new code.
     Also provides to_image() for save_png() integration.
     """
 
@@ -74,10 +74,9 @@ class Gumps:
     def initialize(
         cls,
         idx_path: Optional[str] = None,
-        mul_path: Optional[str] = None
+        mul_path: Optional[str] = None,
     ) -> bool:
         """Initialize Gumps static state.
-
         Tries MUL files first; if unavailable falls back to gumpartlegacymul.uop.
         Optionally accepts explicit paths for testing.
         """
@@ -115,11 +114,9 @@ class Gumps:
     @classmethod
     def save_png(cls, id: int, path: str | Path) -> bool:
         """Render gump to PNG file.
-
-        The returned data object must support .to_image() -> PIL Image.
-        Raises exceptions for invalid paths or other I/O errors.
+        Raises FileAccessException for invalid paths or other I/O errors.
         """
-                try:
+        try:
             out_path = Path(path)
         except Exception as e:
             raise FileAccessException(f"Invalid output path: {e}")
@@ -132,8 +129,7 @@ class Gumps:
 
     @classmethod
     def get_gump(cls, id: int) -> Optional[GumpImage]:
-        """Return GumpImage for gump *id*, or None.
-
+        """Return GumpImage for gump id, or None.
         GumpImage is a NamedTuple so both tuple unpacking and attribute access work.
         GumpImage.pixels is raw bytes (width * height * 2 bytes).
         """
@@ -170,38 +166,38 @@ class Gumps:
 
     @classmethod
     def _decode_raw_gump(cls, data: bytes) -> Optional[GumpImage]:
-        """Decode raw/test-format gump: <HH w h> + w*h*2 raw pixel bytes."""
+        """Decode raw/test-format gump: <HH width height> + w*h*2 raw pixel bytes."""
         if len(data) < 4:
             return None
         width, height = struct.unpack_from("<HH", data, 0)
         if width == 0 or height == 0:
             return None
-        pixel_bytes = data[4:4 + width * height * 2]
+        pixel_bytes = data[4: 4 + width * height * 2]
         return GumpImage(pixels=pixel_bytes, width=width, height=height)
 
     @classmethod
     def _decode_uop_gump(cls, id: int) -> Optional[GumpImage]:
         """Decode a gump from UOP storage.
-
         After the UopFile strips the 8-byte has_extra prefix, the remaining
-        payload starts with struct.pack('<HH', width, height) followed by raw
-        width*height*2 pixel bytes.
+        payload starts with struct.pack('<HH', width, height) followed by raw pixels.
         """
-        if cls._index is None:
+        raw = cls._index.read_raw(id)
+        if raw is None or len(raw) < 4:
             return None
-        data = cls._index.read_raw(id)
-        if data is None or len(data) < 4:
-            return None
-        width, height = struct.unpack_from("<HH", data, 0)
+        width, height = struct.unpack_from("<HH", raw, 0)
         if width == 0 or height == 0:
             return None
-        pixel_bytes = data[4:4 + width * height * 2]
+        pixel_bytes = raw[4: 4 + width * height * 2]
         return GumpImage(pixels=pixel_bytes, width=width, height=height)
 
     @classmethod
-    def _decode_mul_rle(cls, data: bytes, width: int, height: int) -> Optional[GumpImage]:
+    def _decode_mul_rle(
+        cls,
+        data: bytes,
+        width: int,
+        height: int,
+    ) -> Optional[GumpImage]:
         """Decode MUL-format RLE gump data into a GumpImage.
-
         Returns GumpImage with pixels as raw bytes (width*height*2).
         """
         if width == 0 or height == 0:
@@ -221,8 +217,9 @@ class Gumps:
                     break
                 color, run = struct.unpack_from("<HH", data, pos)
                 pos += 4
-                if color:
-                    color |= 0x8000
+                if color == 0 and run == 0:
+                    break
+                color |= 0x8000
                 for _ in range(run):
                     if cur_x >= width:
                         break
@@ -232,7 +229,12 @@ class Gumps:
         return GumpImage(pixels=bytes(out), width=width, height=height)
 
     @classmethod
-    def apply_verdata_patch(cls, block_id: int, data: bytes, extra: int) -> None:
+    def apply_verdata_patch(
+        cls,
+        block_id: int,
+        data: bytes,
+        extra: int = 0,
+    ) -> None:
         """Cache raw verdata patch bytes for a gump."""
         if not cls._initialized:
             cls.initialize()
