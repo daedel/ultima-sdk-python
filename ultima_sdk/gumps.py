@@ -3,19 +3,19 @@ Gumps module - Reads gump images from gumpart.mul / gumpart.idx.
 
 RLE format (each row):
   Lookup table: height ushort values, each is a ushort-array index into the
-                RLE data (multiply by 2 to get byte offset from data start).
-  RLE stream:   pairs of (color: ushort, run: ushort)  — color FIRST per C# ref.
+               RLE data (multiply by 2 to get byte offset from data start).
+  RLE stream:  pairs of (color: ushort, run: ushort) -- color FIRST per C# ref.
 
 Width and height come from the INDEX extra field, NOT from the data block.
-  extra >> 16 & 0xFFFF  = width
-  extra & 0xFFFF        = height
+  extra >> 16 & 0xFFFF = width
+  extra & 0xFFFF       = height
 
 Every non-zero color must have bit 15 (0x8000) set for the display layer
 to treat it as opaque (15-bit RGB, bit-15 = opacity).
 """
-
 import struct
 from typing import Optional, Tuple, List
+
 from .file_index import FileIndex
 from .files import Files
 from .exceptions import FileAccessException
@@ -26,6 +26,9 @@ class Gumps:
 
     _index: Optional[FileIndex] = None
     _initialized: bool = False
+
+    # Overlay cache: maps gump id -> (raw_bytes, extra) from verdata patches.
+    _patch_cache: dict = {}
 
     @classmethod
     def initialize(cls) -> bool:
@@ -53,14 +56,18 @@ class Gumps:
         """
         if not cls._initialized:
             cls.initialize()
-        if cls._index is None:
-            return None
 
-        # read_raw must return (data_bytes, extra) so we can get w/h.
-        result = cls._index.read_raw(id)
-        if result is None:
-            return None
-        data, extra = result  # extra is the 3rd int32 from the .idx entry
+        # Check verdata patch cache first, then fall through to index.
+        if id in cls._patch_cache:
+            data, extra = cls._patch_cache[id]
+        else:
+            if cls._index is None:
+                return None
+            # read_raw must return (data_bytes, extra) so we can get w/h.
+            result = cls._index.read_raw(id)
+            if result is None:
+                return None
+            data, extra = result
 
         # Width and height are packed into the extra field.
         width  = (extra >> 16) & 0xFFFF
@@ -68,20 +75,19 @@ class Gumps:
         if width == 0 or height == 0:
             return None
 
-        # The data block begins with a lookup table: height × ushort values.
-        # Each value is a ushort-array index; multiply by 2 → byte offset
+        # The data block begins with a lookup table: height x ushort values.
+        # Each value is a ushort-array index; multiply by 2 -> byte offset
         # from the start of the RLE data (i.e. from byte 0 of `data`).
         lookup_count = height
         lookup_bytes = lookup_count * 2
         if len(data) < lookup_bytes:
             return None
-
         lookups = struct.unpack_from(f"<{lookup_count}H", data, 0)
         rle_data = data  # row offsets are relative to data[0], ushort-indexed
 
         pixels = []
         for y in range(height):
-            row_byte_offset = lookups[y] * 2   # ushort index → byte offset
+            row_byte_offset = lookups[y] * 2  # ushort index -> byte offset
             pos = row_byte_offset
             row: List[int] = []
             cur_x = 0
@@ -92,7 +98,7 @@ class Gumps:
                 color, run = struct.unpack_from("<HH", rle_data, pos)
                 pos += 4
                 if run == 0:
-                    # Explicit zero-run — advance to end of row
+                    # Explicit zero-run -- advance to end of row
                     break
                 # Set bit 15 (opaque) on non-zero colors
                 if color != 0:
@@ -105,13 +111,10 @@ class Gumps:
             pixels.append(row[:width])
 
         return pixels, width, height
-        
+
     # ------------------------------------------------------------------
     # Verdata patch integration
     # ------------------------------------------------------------------
-
-    # Overlay cache: maps gump id -> (raw_bytes, extra) from verdata patches.
-    _patch_cache: dict = {}
 
     @classmethod
     def apply_verdata_patch(cls, block_id: int, data: bytes, extra: int = 0) -> None:
@@ -128,4 +131,3 @@ class Gumps:
         if not cls._initialized:
             cls.initialize()
         cls._patch_cache[block_id] = (data, extra)
-
