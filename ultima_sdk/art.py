@@ -13,21 +13,39 @@ Static art:
      Same 0x8000 alpha bit applies.
 """
 import struct
-from dataclasses import dataclass
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, NamedTuple
 from pathlib import Path
 from .file_index import FileIndex
 from .files import Files
 from .exceptions import FileAccessException
 
 
-@dataclass
-class ArtTile:
-    """Result object returned by get_art / get_static_tile / get_land_tile."""
+class ArtTile(NamedTuple):
+    """Result object returned by get_static_tile / get_art.
+
+    Supports both tuple unpacking (pixels, width, height = tile) for backward
+    compatibility and attribute access (tile.width, tile.height) for new code.
+    Also provides to_image() for save_png() integration.
+    """
 
     pixels: List[List[int]]
     width: int
     height: int
+
+    def to_image(self):
+        """Convert pixel data to a PIL Image (RGBA)."""
+        from PIL import Image
+
+        img = Image.new("RGBA", (self.width, self.height))
+        pix = img.load()
+        for y, row in enumerate(self.pixels):
+            for x, color in enumerate(row):
+                if color:
+                    r = ((color >> 10) & 0x1F) << 3
+                    g = ((color >> 5) & 0x1F) << 3
+                    b = (color & 0x1F) << 3
+                    pix[x, y] = (r, g, b, 255)
+        return img
 
 
 class Art:
@@ -91,31 +109,30 @@ class Art:
         """Backward compatibility alias."""
         if id >= 0x4000:
             return cls.get_static_tile(id - 0x4000)
-        return cls.get_land_tile(id)
+        return cls.get_land_tile(id)  # type: ignore[return-value]
 
     @classmethod
-    def get_equipped_art(cls, id: int, body_id: int) -> Optional[ArtTile]:
+    def get_equipped_art(cls, id: int, body_id: int = None) -> Optional[ArtTile]:
         """Backward compatibility alias for equipconv tests."""
         return cls.get_art(id)
 
     @classmethod
-    def save_png(cls, id: int, path: str | Path, *, body_id: Optional[int] = None) -> bool:
-        """Render art to PNG file."""
-        data = cls.get_art(id)
-        if data is None:
-            return False
-        try:
-            from PIL import Image
+    def save_png(
+        cls, id: int, path: str | Path, *, body_id: Optional[int] = None
+    ) -> bool:
+        """Render art to PNG file.
 
-            img = Image.new("RGBA", (data.width, data.height))
-            pix = img.load()
-            for y, row in enumerate(data.pixels):
-                for x, color in enumerate(row):
-                    if color:
-                        r = ((color >> 10) & 0x1F) << 3
-                        g = ((color >> 5) & 0x1F) << 3
-                        b = (color & 0x1F) << 3
-                        pix[x, y] = (r, g, b, 255)
+        Uses get_equipped_art() when body_id is supplied, get_art() otherwise.
+        The returned data object must support .to_image() -> PIL Image.
+        """
+        try:
+            if body_id is not None:
+                data = cls.get_equipped_art(id, body_id=body_id)
+            else:
+                data = cls.get_art(id)
+            if data is None:
+                return False
+            img = data.to_image()
             img.save(path, "PNG")
             return True
         except Exception:
@@ -131,7 +148,12 @@ class Art:
         return cls._index.read_raw(mul_id)
 
     @classmethod
-    def get_land_tile(cls, id: int) -> Optional[ArtTile]:
+    def get_land_tile(cls, id: int) -> Optional[List[List[int]]]:
+        """Return a list of 44 rows (each 44 pixels wide) for land tile *id*.
+
+        Returns the raw pixel list directly for backward compatibility with
+        tests that call len(result) or iterate rows directly.
+        """
         if not cls._initialized:
             cls.initialize()
         data = cls._get_raw_data(id)
@@ -151,10 +173,16 @@ class Art:
                     pixel |= 0x8000
                 row[left_pad + col] = pixel
             rows.append(row)
-        return ArtTile(pixels=rows, width=44, height=44)
+        return rows
 
     @classmethod
     def get_static_tile(cls, id: int) -> Optional[ArtTile]:
+        """Return ArtTile(pixels, width, height) for static tile *id*, or None.
+
+        ArtTile is a NamedTuple so both tuple unpacking and attribute access work:
+            pixels, width, height = tile  # backward compat
+            tile.width                    # new code / UOP fallback tests
+        """
         if not cls._initialized:
             cls.initialize()
         data = cls._get_raw_data(id + 0x4000)
