@@ -335,3 +335,40 @@ class TileData:
                 for i in range(_ITEM_GROUP_ENTRIES):
                     idx = g * _ITEM_GROUP_ENTRIES + i
                     f.write(cls._encode_item_entry(cls._item_tiles[idx]))
+
+    # ------------------------------------------------------------------
+    # Verdata patch integration
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def apply_verdata_patch(cls, block_id: int, data: bytes, extra: int = 0) -> None:
+        """Apply a raw verdata.mul patch to the in-memory tile cache.
+
+        block_id maps directly to a tile index:
+          - block_id < 0x4000  -> land tile  (block_id itself is the tile id)
+          - block_id >= 0x4000 -> item tile  (block_id - 0x4000 is the tile id)
+
+        data must be exactly _LAND_ENTRY_SIZE_OLD/HS or _ITEM_ENTRY_SIZE_OLD/HS
+        bytes -- the raw struct as it appears in tiledata.mul, matching whatever
+        format was detected at initialize() time.
+
+        extra is unused for tiledata patches but kept for API consistency.
+        """
+        if not cls._initialized:
+            cls.initialize()
+
+        import io
+        reader = BinaryReader(io.BytesIO(data))
+
+        if block_id < 0x4000:
+            # Land tile
+            tile_id = block_id
+            if not (0 <= tile_id < len(cls._land_tiles)):
+                return
+            cls._land_tiles[tile_id] = cls._read_land_tile_entry(reader)
+        else:
+            # Item tile
+            tile_id = block_id - 0x4000
+            if not (0 <= tile_id < len(cls._item_tiles)):
+                return
+            cls._item_tiles[tile_id] = cls._read_item_tile_entry(reader)
