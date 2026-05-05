@@ -13,6 +13,12 @@ into a 64-bit value, then using that hash to locate the payload.
 
 Patterns in the community are typically expressed using C#-style formatting
 like "build/artlegacymul/{0:D8}.tga".
+
+Note on has_extra:
+    Some UOP archives (e.g. gumpartlegacymul.uop) store a small integer
+    prefix (2 x int32 = 8 bytes) at the very start of each decompressed
+    payload.  The entry records in the index block are still the standard
+    34-byte format -- has_extra only affects post-decompress stripping.
 """
 from __future__ import annotations
 
@@ -40,12 +46,12 @@ class UopCompressionError(UopError):
 
 @dataclass(frozen=True)
 class UopEntry:
-    offset:               int
-    compressed_length:    int
-    decompressed_length:  int
-    compression_flag:     int
-    extra1:               int = 0
-    extra2:               int = 0
+    offset: int
+    compressed_length: int
+    decompressed_length: int
+    compression_flag: int
+    extra1: int = 0
+    extra2: int = 0
 
 
 _CSHARP_FMT_RE = re.compile(r"\{(\d+)(?::D(\d+))?\}")
@@ -53,8 +59,9 @@ _CSHARP_FMT_RE = re.compile(r"\{(\d+)(?::D(\d+))?\}")
 
 def _format_csharp_pattern(pattern: str, *args: int) -> str:
     """Format a C#-style pattern like ".../{0:D8}.dat" with integer args."""
+
     def repl(match: re.Match) -> str:
-        idx   = int(match.group(1))
+        idx = int(match.group(1))
         width = match.group(2)
         if idx >= len(args):
             raise ValueError(f"Pattern placeholder {{{idx}}} out of range")
@@ -62,6 +69,7 @@ def _format_csharp_pattern(pattern: str, *args: int) -> str:
         if width is None:
             return str(value)
         return f"{value:0{int(width)}d}"
+
     return _CSHARP_FMT_RE.sub(repl, pattern)
 
 
@@ -80,10 +88,8 @@ def create_hash(s: str) -> int:
     """
     # Use latin-1 so bytes map 1:1 for 0-255; UOP virtual filenames are ASCII.
     b = s.encode("latin-1")
-
     eax = ecx = edx = ebx = esi = edi = 0
     ebx = edi = esi = _u32(len(b) + 0xDEADBEEF)
-
     i = 0
     while i + 12 < len(b):
         edi = _u32(
@@ -106,41 +112,39 @@ def create_hash(s: str) -> int:
         esi = _u32((esi - edi) ^ (edi >> 28) ^ _u32(edi << 4))
         edi = _u32(edi + ebx)
         i += 12
-
     if len(b) - i > 0:
         remain = len(b) - i
-        if remain >= 12: 
-                esi = _u32(esi + (b[i + 11] << 24))
-        if remain >= 11: 
-                esi = _u32(esi + (b[i + 10] << 16))
-        if remain >= 10: 
-                esi = _u32(esi + (b[i + 9] << 8))
+        if remain >= 12:
+            esi = _u32(esi + (b[i + 11] << 24))
+        if remain >= 11:
+            esi = _u32(esi + (b[i + 10] << 16))
+        if remain >= 10:
+            esi = _u32(esi + (b[i + 9] << 8))
         if remain >= 9:
-                esi = _u32(esi + b[i + 8])
+            esi = _u32(esi + b[i + 8])
         if remain >= 8:
-                edi = _u32(edi + (b[i + 7] << 24))
+            edi = _u32(edi + (b[i + 7] << 24))
         if remain >= 7:
-                edi = _u32(edi + (b[i + 6] << 16))
+            edi = _u32(edi + (b[i + 6] << 16))
         if remain >= 6:
-                edi = _u32(edi + (b[i + 5] << 8))
+            edi = _u32(edi + (b[i + 5] << 8))
         if remain >= 5:
-                edi = _u32(edi + b[i + 4])
+            edi = _u32(edi + b[i + 4])
         if remain >= 4:
-                ebx = _u32(ebx + (b[i + 3] << 24))
+            ebx = _u32(ebx + (b[i + 3] << 24))
         if remain >= 3:
-                ebx = _u32(ebx + (b[i + 2] << 16))
+            ebx = _u32(ebx + (b[i + 2] << 16))
         if remain >= 2:
-                ebx = _u32(ebx + (b[i + 1] << 8))
+            ebx = _u32(ebx + (b[i + 1] << 8))
         if remain >= 1:
-                ebx = _u32(ebx + b[i])
-
-    edx = _u32((esi ^ edi) - ((edi >> 18) ^ _u32(edi << 14)))
-    ecx = _u32((edx ^ ebx) - ((edx >> 21) ^ _u32(edx << 11)))
-    edi = _u32((edi ^ ecx) - ((ecx >> 7)  ^ _u32(ecx << 25)))
-    edx = _u32((edx ^ edi) - ((edi >> 16) ^ _u32(edi << 16)))
-    eax = _u32((ecx ^ edx) - ((edx >> 28) ^ _u32(edx << 4)))
-    edi = _u32((edi ^ eax) - ((eax >> 18) ^ _u32(eax << 14)))
-    eax = _u32((edx ^ edi) - ((edi >> 8)  ^ _u32(edi << 24)))
+            ebx = _u32(ebx + b[i])
+        edx = _u32((esi ^ edi) - ((edi >> 18) ^ _u32(edi << 14)))
+        ecx = _u32((edx ^ ebx) - ((edx >> 21) ^ _u32(edx << 11)))
+        edi = _u32((edi ^ ecx) - ((ecx >> 7) ^ _u32(ecx << 25)))
+        edx = _u32((edx ^ edi) - ((edi >> 16) ^ _u32(edi << 16)))
+        eax = _u32((ecx ^ edx) - ((edx >> 28) ^ _u32(edx << 4)))
+        edi = _u32((edi ^ eax) - ((eax >> 18) ^ _u32(eax << 14)))
+        eax = _u32((edx ^ edi) - ((edi >> 8) ^ _u32(edi << 24)))
     return (_u32(edi) << 32) | _u32(eax)
 
 
@@ -149,7 +153,6 @@ def _decompress(
 ) -> bytes:
     if flag == 0:
         return payload
-
     if flag == 1:
         try:
             out = zlib.decompress(payload)
@@ -167,7 +170,6 @@ def _decompress(
                     f"{decompressed_length}, got {len(out)}"
                 )
         return out
-
     if flag == 3:
         try:
             out = zlib.decompress(payload)
@@ -183,7 +185,6 @@ def _decompress(
                     f"{decompressed_length}, got {len(out)}"
                 )
         return _bwt_decompress(out)
-
     raise UopCompressionError(f"Unsupported UOP compression flag: {flag}")
 
 
@@ -194,16 +195,14 @@ def _bwt_decompress(buffer: bytes) -> bytes:
     """
     if buffer is None or len(buffer) < 6:
         raise UopCompressionError("BWT buffer too short")
-
     # The first 4 bytes are a header (unused by the reference implementation).
     codes = buffer[4:]
     if len(codes) < 2:
         return b""
-
-    # Stage 1: Move-to-front decode.  The last code byte acts as a sentinel and
+    # Stage 1: Move-to-front decode. The last code byte acts as a sentinel and
     # does not emit an output byte.
     table = list(range(256))
-    mtf   = bytearray(len(codes) - 1)
+    mtf = bytearray(len(codes) - 1)
     for i, code in enumerate(codes[:-1]):
         if code >= 256:
             raise UopCompressionError(f"Invalid MTF code: {code}")
@@ -212,28 +211,23 @@ def _bwt_decompress(buffer: bytes) -> bytes:
             table.pop(code)
             table.insert(0, value)
         mtf[i] = value
-
     # Stage 2: Internal UO decoder operating on the MTF output.
     if len(mtf) < 1024:
         raise UopCompressionError("BWT MTF output too short")
-
     counts = list(struct.unpack_from("<256i", mtf, 0))
     if any(c < 0 for c in counts):
         raise UopCompressionError("Invalid BWT frequency table")
-
-    total   = sum(counts)
+    total = sum(counts)
     out_len = total
     if out_len < 0:
         raise UopCompressionError("Invalid BWT output length")
-
-    partial   = [0] * (256 * 3)
+    partial = [0] * (256 * 3)
     partial[0:256] = counts
-    non_zero  = 0
+    non_zero = 0
     for c in counts:
         if c != 0:
             non_zero += 1
-
-    tmp     = counts[:]
+    tmp = counts[:]
     ordered = []
     for _ in range(256):
         max_val = 0
@@ -246,7 +240,6 @@ def _bwt_decompress(buffer: bytes) -> bytes:
             break
         ordered.append(max_idx)
         tmp[max_idx] = 0
-
     symbol_table = list(range(256))
     m = 0
     for i in range(non_zero):
@@ -257,17 +250,16 @@ def _bwt_decompress(buffer: bytes) -> bytes:
         if pos >= len(mtf):
             raise UopCompressionError("BWT stream truncated")
         symbol_table[mtf[pos]] = sym
-        partial[sym + 256]     = m + 1
-        m                     += partial[sym]
-        partial[sym + 512]     = m
-
+        partial[sym + 256] = m + 1
+        m += partial[sym]
+        partial[sym + 512] = m
     value = symbol_table[0] & 0xFF
-    out   = bytearray(out_len)
+    out = bytearray(out_len)
     for i in range(out_len):
-        out[i]      = value
-        start_idx   = value + 256
-        start       = partial[start_idx]
-        end         = partial[value + 512]
+        out[i] = value
+        start_idx = value + 256
+        start = partial[start_idx]
+        end = partial[value + 512]
         if start >= end:
             if non_zero > 0:
                 non_zero -= 1
@@ -287,7 +279,6 @@ def _bwt_decompress(buffer: bytes) -> bytes:
                 symbol_table[j] = symbol_table[j + 1]
             symbol_table[idx] = value
         value = symbol_table[0] & 0xFF
-
     return bytes(out)
 
 
@@ -301,8 +292,8 @@ class UopFile:
         *,
         has_extra: bool = False,
     ):
-        self.path      = str(path)
-        self.pattern   = pattern
+        self.path = str(path)
+        self.pattern = pattern
         self.has_extra = bool(has_extra)
         self._hash_to_entry: Dict[int, UopEntry] = {}
         self._parsed = False
@@ -331,25 +322,22 @@ class UopFile:
                 if len(block_header) < 12:
                     break
                 entry_count, next_block = struct.unpack("<IQ", block_header)
+                # Entry records are ALWAYS 34 bytes (<QIIIQIH>).
+                # has_extra only controls post-decompress payload stripping,
+                # not the size of the index record itself.
                 for _ in range(entry_count):
-                    if self.has_extra:
-                        raw = f.read(42)
-                        if len(raw) < 42:
-                            break
-                        (
-                            offset, header_len, compressed_len,
-                            decompressed_len, h, checksum,
-                            flag, extra1, extra2,
-                        ) = struct.unpack("<QIIIQIHH", raw)
-                    else:
-                        raw = f.read(34)
-                        if len(raw) < 34:
-                            break
-                        (
-                            offset, header_len, compressed_len,
-                            decompressed_len, h, checksum, flag,
-                        ) = struct.unpack("<QIIIQIH", raw)
-                        extra1 = extra2 = 0
+                    raw = f.read(34)
+                    if len(raw) < 34:
+                        break
+                    (
+                        offset,
+                        header_len,
+                        compressed_len,
+                        decompressed_len,
+                        h,
+                        checksum,
+                        flag,
+                    ) = struct.unpack("<QIIIQIH", raw)
                     if h == 0:
                         continue
                     self._hash_to_entry[h] = UopEntry(
@@ -357,8 +345,8 @@ class UopFile:
                         compressed_length=int(compressed_len),
                         decompressed_length=int(decompressed_len),
                         compression_flag=int(flag),
-                        extra1=int(extra1),
-                        extra2=int(extra2),
+                        extra1=0,
+                        extra2=0,
                     )
                 block_offset = next_block
         self._parsed = True
@@ -382,13 +370,18 @@ class UopFile:
         if not payload:
             return None
         try:
-            return _decompress(
+            data = _decompress(
                 entry.compression_flag,
                 payload,
                 entry.decompressed_length,
             )
         except UopCompressionError:
             raise
+        # Strip the 8-byte (int32, int32) prefix that some UOP archives
+        # (e.g. gumpartlegacymul.uop) prepend to every decompressed payload.
+        if self.has_extra and len(data) >= 8:
+            data = data[8:]
+        return data
 
 
 class UopBackedIndex:
