@@ -2,19 +2,19 @@
 (or art.uop for High Seas clients).
 
 Land tile geometry:
-        44 rows arranged as an isometric diamond:
-        top half:    row widths 2, 4, 6, ..., 44 (22 rows, step +2)
-        bottom half: row widths 44, 42, ..., 2  (22 rows, step -2)
-        Each row is left-padded so the diamond is centred in a 44x44 bounding box.
-        Pixel values read directly from the stream, ORed with 0x8000 (opaque bit).
+    44 rows arranged as an isometric diamond:
+    top half:    row widths 2, 4, 6, ..., 44 (22 rows, step +2)
+    bottom half: row widths 44, 42, ..., 2  (22 rows, step -2)
+    Each row is left-padded so the diamond is centred in a 44x44 bounding box.
+    Pixel values read directly from the stream, ORed with 0x8000 (opaque bit).
 
 Static art (MUL format):
-        4-byte header (ignored), then <HH width height>, then RLE.
+    4-byte header (ignored), then <HH width height>, then RLE.
 
 Static art (UOP / raw format):
-        Payload starts directly with <HH width height> followed by raw
-        width*height*2 bytes of 16-bit pixel data (row-major).
-        No 4-byte ignored header, no lookup table, no RLE.
+    Payload starts directly with <HH width height> followed by raw
+    width*height*2 bytes of 16-bit pixel data (row-major).
+    No 4-byte ignored header, no lookup table, no RLE.
 """
 import struct
 from typing import Optional, List, NamedTuple
@@ -37,7 +37,8 @@ class ArtTile(NamedTuple):
     pixels: object  # bytes (raw) or List[List[int]] (2D MUL rows)
     width: int
     height: int
-        def to_image(self):
+
+    def to_image(self):
         """Convert pixel data to a PIL Image (RGBA).
         Supports both raw bytes (from _decode_raw_static) and
         2D list of rows (from _decode_mul_static)."""
@@ -98,8 +99,7 @@ class Art:
         + list(range(44, 0, -2))  # 44..2 -- 22 values
     )  # total 44 values; max = 44
 
-    # Overlay cache: maps mul-file id -> raw bytes.
-    # For static tiles (MUL path): key = block_id + 0x4000
+    # Patch cache: maps mul-file id -> raw bytes.
     # Populated by apply_verdata_patch(); checked before hitting _index.
     _patch_cache: dict = {}
 
@@ -107,10 +107,9 @@ class Art:
     def initialize(
         cls,
         idx_path: Optional[str] = None,
-        mul_path: Optional[str] = None
+        mul_path: Optional[str] = None,
     ) -> bool:
         """Initialize Art static state.
-
         Tries MUL files first; if unavailable falls back to artlegacymul.uop.
         Optionally accepts explicit paths for testing.
         """
@@ -157,15 +156,12 @@ class Art:
     @classmethod
     def get_art(cls, id: int) -> Optional[ArtTile]:
         """Return ArtTile for the given art id.
-
         For id >= 0x4000: delegates to get_static_tile(id - 0x4000).
-        For id < 0x4000: reads raw data and decodes as a raw/UOP-format tile
-        (i.e., <HH width height> followed by raw 16-bit pixels).
-        Use get_land_tile() for the land-tile diamond pixel list.
+        For id < 0x4000: reads raw data and decodes as a raw/UOP-format tile.
         """
         if id >= 0x4000:
             return cls.get_static_tile(id - 0x4000)
-        # Land tile range: decode raw data as raw/UOP-format static art.
+
         if not cls._initialized:
             cls.initialize()
         data = cls._get_raw_data(id)
@@ -175,13 +171,11 @@ class Art:
 
     @classmethod
     def get_equipped_art(
-        cls, id: int, body_id: Optional[int] = None
+        cls,
+        id: int,
+        body_id: Optional[int] = None,
     ) -> Optional[EquippedArtTile]:
-        """Return EquippedArtTile for art id, applying EquipConv remapping.
-
-        Looks up an EquipConv override for (id, body_id) to find the actual
-        graphic id to load.  Returns None if the resolved graphic is missing.
-        """
+        """Return EquippedArtTile for art id, applying EquipConv remapping."""
         from .equipconv import EquipConv
         resolved_id = EquipConv.try_convert(id, body_id=body_id)
         if resolved_id is None:
@@ -193,12 +187,14 @@ class Art:
 
     @classmethod
     def save_png(
-        cls, id: int, path: str | Path, *, body_id: Optional[int] = None
+        cls,
+        id: int,
+        path: str | Path,
+        *,
+        body_id: Optional[int] = None,
     ) -> bool:
         """Render art to PNG file.
-
         Uses get_equipped_art() when body_id is supplied, get_art() otherwise.
-        The returned data object must support .to_image() -> PIL Image.
         Raises exceptions for invalid paths or other I/O errors.
         """
         if body_id is not None:
@@ -222,10 +218,8 @@ class Art:
 
     @classmethod
     def get_land_tile(cls, id: int) -> Optional[List[List[int]]]:
-        """Return a list of 44 rows (each 44 pixels wide) for land tile *id*.
-
-        Returns the raw pixel list directly for backward compatibility with
-        tests that call len(result) or iterate rows directly.
+        """Return a list of 44 rows (each 44 pixels wide) for land tile id.
+        Returns the raw pixel list directly for backward compatibility.
         """
         if not cls._initialized:
             cls.initialize()
@@ -241,24 +235,14 @@ class Art:
                 if pos + 2 > len(data):
                     break
                 (pixel,) = struct.unpack_from("<H", data, pos)
+                row[left_pad + col] = pixel | 0x8000
                 pos += 2
-                if pixel != 0:
-                    pixel |= 0x8000
-                row[left_pad + col] = pixel
             rows.append(row)
         return rows
 
     @classmethod
     def get_static_tile(cls, id: int) -> Optional[ArtTile]:
-        """Return ArtTile(pixels, width, height) for static tile *id*, or None.
-
-        ArtTile.pixels is raw bytes (width * height * 2 bytes of 16-bit LE colours).
-
-        MUL format: data at mul-index (id + 0x4000) starts with 4 ignored bytes,
-                    then <HH w h>, then RLE (decoded to raw pixels).
-        UOP format: data is looked up directly by id (no 0x4000 offset),
-                    starts with <HH w h> followed by raw pixel bytes.
-        """
+        """Return ArtTile(pixels, width, height) for static tile id, or None."""
         if not cls._initialized:
             cls.initialize()
         if cls._is_uop():
@@ -270,25 +254,22 @@ class Art:
         if cls._is_uop():
             return cls._decode_raw_static(data)
         else:
-                        return cls._decode_mul_static(data)
+            return cls._decode_mul_static(data)
 
     @classmethod
     def _decode_raw_static(cls, data: bytes) -> Optional[ArtTile]:
-        """Decode raw/UOP static art: <HH w h> + width*height*2 raw pixel bytes."""
+        """Decode raw/UOP static art: <HH width height> + width*height*2 raw pixel bytes."""
         if len(data) < 4:
             return None
         width, height = struct.unpack_from("<HH", data, 0)
         if width == 0 or height == 0:
             return None
-        pixel_bytes = data[4:4 + width * height * 2]
+        pixel_bytes = data[4: 4 + width * height * 2]
         return ArtTile(pixels=pixel_bytes, width=width, height=height)
 
     @classmethod
     def _decode_mul_static(cls, data: bytes) -> Optional[ArtTile]:
-        """Decode MUL static art payload: 4 ignored bytes, <HH w h>, RLE.
-
-        Decodes the RLE stream into raw flat pixel bytes (width*height*2).
-        """
+        """Decode MUL static art payload: 4 ignored bytes, <HH width height>, RLE."""
         if len(data) < 8:
             return None
         pos = 4  # skip 4-byte ignored header
@@ -302,7 +283,7 @@ class Art:
         lookups = struct.unpack_from(f"<{height}H", data, pos)
         pos += lookup_bytes
         pixel_data_start = pos
-                rows: List[List[int]] = [[0] * width for _ in range(height)]
+        rows: List[List[int]] = [[0] * width for _ in range(height)]
         for y in range(height):
             rle_pos = pixel_data_start + lookups[y] * 2
             x = 0
@@ -319,22 +300,22 @@ class Art:
                         break
                     (pixel,) = struct.unpack_from("<H", data, rle_pos)
                     rle_pos += 2
-                    if pixel != 0:
-                        pixel |= 0x8000
                     rows[y][x] = pixel
-                                                            x += 1
-                return ArtTile(pixels=rows, width=width, height=height)
+                    x += 1
+        return ArtTile(pixels=rows, width=width, height=height)
 
     @classmethod
-    def apply_verdata_patch(cls, block_id: int, data: bytes, extra: int = 0) -> None:
+    def apply_verdata_patch(
+        cls,
+        block_id: int,
+        data: bytes,
+        extra: Optional[int] = None,
+    ) -> None:
         """Cache raw verdata patch bytes for a static art tile.
-
-        block_id is the static tile index (0 = first static tile).  For the
-        MUL lookup path the internal mul-file key is block_id + 0x4000, so we
-        store the data under that key so _get_raw_data() can find it.
+        block_id is the static tile index (0 = first static tile).
         """
         if not cls._initialized:
             cls.initialize()
-                cls._patch_cache[block_id] = data
-                if extra:
+        cls._patch_cache[block_id] = data
+        if extra:
             cls._patch_cache[(block_id, "extra")] = extra
