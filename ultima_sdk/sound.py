@@ -30,45 +30,41 @@ class Sound:
 
     @classmethod
     def initialize(
-        cls, idx_path: str | None = None, mul_path: str | None = None
+        cls,
+        idx_path: str | None = None,
+        mul_path: str | None = None
     ) -> bool:
         """Initialize sound index."""
         if cls._initialized:
             return True
-
         try:
             if idx_path is None:
                 idx_path = Files.get_file_path("soundidx.mul")
             if mul_path is None:
                 mul_path = Files.get_file_path("sound.mul")
-
             from .verdata_ids import IDS as VERDATA_IDS
-
             if idx_path and mul_path:
                 from .file_index import FileIndex
-
                 cls._index = FileIndex(
-                    idx_path, mul_path, file_id=VERDATA_IDS.SOUND_MUL
+                    idx_path,
+                    mul_path,
+                    file_id=VERDATA_IDS.SOUND_MUL
                 )
                 cls._initialized = True
                 return True
-
             # UOP fallback (newer clients).
             uop_path = Files.get_file_path("soundlegacymul.uop")
             if uop_path:
                 from .uop import UopBackedIndex
-
                 cls._index = UopBackedIndex(
                     uop_path,
                     "build/soundlegacymul/{0:D8}.dat",
                     has_extra=False,
-                    file_id=VERDATA_IDS.SOUND_MUL,
                 )
                 cls._initialized = True
                 return True
         except Exception as e:
             raise FileAccessException(f"Failed to initialize sounds: {e}")
-
         return False
 
     @classmethod
@@ -76,19 +72,14 @@ class Sound:
         """Get sound by ID."""
         if not cls._initialized:
             cls.initialize()
-
         if not cls._index:
             return None
-
         raw = cls._index.read_raw(sound_id)
         if not raw:
             return None
-
         name, wave = cls._coerce_to_wav(raw)
-
         if not cls._looks_like_wav(wave):
             raise WaveFormatException("Sound data is not a valid RIFF/WAVE stream")
-
         return SoundData(sound_id=sound_id, data=wave, name=name)
 
     @classmethod
@@ -100,7 +91,6 @@ class Sound:
         - RIFF/WAVE preceded by a fixed 40-byte name
         - UO legacy sound payloads (often name-prefixed + non-RIFF PCM)
         """
-
         if cls._looks_like_wav(raw):
             return (None, raw)
 
@@ -133,10 +123,10 @@ class Sound:
             prefix = raw[:off]
             decoded = cls._decode_name(prefix)
             if decoded and (
-                ".wav" in decoded.lower() or decoded.replace("_", "").isalnum()
+                ".wav" in decoded.lower()
+                or decoded.replace("_", "").isalnum()
             ):
                 name = decoded
-
             # Score raw[off:] as PCM, and raw[off+32:] in case there's a small header.
             for pcm_off in (off, off + 32):
                 if pcm_off >= len(raw):
@@ -180,7 +170,6 @@ class Sound:
             return 0
         if (len(data) & 1) != 0:
             data = data[:-1]
-
         window = data[:512]
         # Interpret as signed 16-bit little-endian.
         sample_count = len(window) // 2
@@ -188,7 +177,6 @@ class Sound:
             samples = struct.unpack_from(f"<{sample_count}h", window, 0)
         except Exception:
             return 0
-
         # Reject if it's almost all zeros or almost all one value.
         unique = len(set(samples))
         if unique <= 2:
@@ -211,22 +199,19 @@ class Sound:
         """Wrap raw PCM bytes as a minimal RIFF/WAVE container."""
         if pcm is None:
             pcm = b""
-
         # Ensure block alignment.
         block_align = channels * (bits_per_sample // 8)
         if block_align <= 0:
             block_align = 2
-
         if len(pcm) % block_align != 0:
             pcm = pcm[: len(pcm) - (len(pcm) % block_align)]
-
         byte_rate = sample_rate * block_align
         fmt = (
             b"fmt "
-            + struct.pack("<I", 16)
             + struct.pack(
-                "<HHIIHH",
-                1,
+                "<IHHIIHH",
+                16,  # chunk size
+                1,   # PCM format
                 channels,
                 sample_rate,
                 byte_rate,
@@ -234,9 +219,9 @@ class Sound:
                 bits_per_sample,
             )
         )
-        data = b"data" + struct.pack("<I", len(pcm)) + pcm
-        riff_payload = b"WAVE" + fmt + data
-        return b"RIFF" + struct.pack("<I", len(riff_payload)) + riff_payload
+        data_chunk = b"data" + struct.pack("<I", len(pcm)) + pcm
+        riff_size = 4 + len(fmt) + len(data_chunk)
+        return b"RIFF" + struct.pack("<I", riff_size) + b"WAVE" + fmt + data_chunk
 
     @staticmethod
     def _looks_like_wav(data: bytes) -> bool:
@@ -247,16 +232,13 @@ class Sound:
             return False
         if data[8:12] != b"WAVE":
             return False
-
         # If the RIFF chunk size is present and plausible, accept.
         # RIFF size excludes the leading 'RIFF' + size field (8 bytes).
         try:
             riff_size = int.from_bytes(data[4:8], "little", signed=False)
         except Exception:
             return False
-
         # Some writers use 0 or don't match exactly; be permissive but reject absurd values.
         if riff_size > (1024 * 1024 * 256):
             return False
-
         return True
