@@ -180,6 +180,7 @@ class Verdata:
         file_id  4                 -> art.mul   -> Art
         file_id  6                 -> anim.mul  -> Animations
         file_id 11 / 12            -> gumps.mul -> Gumps
+        file_id 14                 -> multi.mul -> Multis
         file_id 17                 -> hues.mul  -> Hues
         file_id 21                 -> texmaps   -> Textures
         file_id 23                 -> light.mul -> Light
@@ -238,6 +239,17 @@ class Verdata:
                     pass
 
             # --------------------------------------------------------------
+            # file_id 14 -- multi.mul
+            # --------------------------------------------------------------
+            elif file_id == 14:
+                try:
+                    from .multis import Multis
+                    Multis.apply_verdata_patch(block_id, data)
+                    applied = True
+                except Exception:
+                    pass
+
+            # --------------------------------------------------------------
             # file_id 17 -- hues.mul
             # --------------------------------------------------------------
             elif file_id == 17:
@@ -288,7 +300,7 @@ class Verdata:
             # (map patches are forwarded to the TileMatrix instance)
             # --------------------------------------------------------------
             elif file_id in (0, 22, 25, 28):
-                map_id_map = {0: 0, 22: 0, 25: 1, 28: 2}
+                map_id_map    = {0: 0, 22: 0, 25: 1, 28: 2}
                 target_map_id = map_id_map[file_id]
                 try:
                     from .map import Map
