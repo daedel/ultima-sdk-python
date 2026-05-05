@@ -157,3 +157,40 @@ class Hues:
                     f.write(struct.pack("<HH", entry["tableStart"], entry["tableEnd"]))
                     name_bytes = entry["name"].encode("latin-1", errors="replace")[:20]
                     f.write(name_bytes.ljust(20, b"\x00"))
+
+    # ------------------------------------------------------------------
+    # Verdata patch integration
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def apply_verdata_patch(cls, block_id: int, data: bytes, extra: int = 0) -> None:
+        """Apply a raw verdata.mul patch to the in-memory hue entry cache.
+
+        block_id is the hue entry index (0-2999).
+        data must be exactly _ENTRY_SIZE (88) bytes:
+            32 x uint16 colors   (64 bytes, with 0x8000 opaque bit set)
+            uint16 tableStart    (2 bytes)
+            uint16 tableEnd      (2 bytes)
+            char[20] name        (20 bytes)
+
+        extra is unused for hues patches but accepted for API consistency.
+        """
+        if not cls._initialized:
+            cls.initialize()
+        if not (0 <= block_id < len(cls._entries)):
+            return
+        if len(data) < _ENTRY_SIZE:
+            return
+        colors_raw = struct.unpack_from("<32H", data, 0)
+        # Set opaque bit on read for non-zero colors
+        colors = [c | 0x8000 if c != 0 else 0 for c in colors_raw]
+        (table_start,) = struct.unpack_from("<H", data, 64)
+        (table_end,)   = struct.unpack_from("<H", data, 66)
+        raw_name = data[68:88]
+        name = raw_name.split(b"\x00", 1)[0].decode("latin-1", errors="replace")
+        cls._entries[block_id] = {
+            "colors":     colors,
+            "tableStart": table_start,
+            "tableEnd":   table_end,
+            "name":       name,
+        }
