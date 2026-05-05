@@ -256,7 +256,7 @@ class Art:
         if cls._is_uop():
             return cls._decode_raw_static(data)
         else:
-            return cls._decode_mul_static(data)
+            return cls._decode_raw_static(data) if (id + 0x4000) in cls._patch_cache else cls._decode_mul_static(data)
 
     @classmethod
     def _decode_raw_static(cls, data: bytes) -> Optional[ArtTile]:
