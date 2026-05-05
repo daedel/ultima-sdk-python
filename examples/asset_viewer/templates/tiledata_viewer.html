@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}TileData Viewer - Ultima Online Asset Viewer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-th"></i> Tile Data</h2>
+        <p class="text-muted">Browse land and static tile definitions and properties.</p>
+    </div>
+</div>
+
+<div class="controls">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="tileType" id="landTiles" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="landTiles">Land Tiles</label>
+
+                <input type="radio" class="btn-check" name="tileType" id="staticTiles" autocomplete="off">
+                <label class="btn btn-outline-primary" for="staticTiles">Static Tiles</label>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <button class="btn btn-primary" onclick="loadTiles()">
+                <i class="fas fa-sync"></i> Load Tiles
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="loadingIndicator" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Loading tile data...</p>
+</div>
+
+<div id="errorMessage" class="error-message" style="display: none;"></div>
+
+<div class="asset-grid" id="tilesGrid"></div>
+
+<div class="modal fade" id="tileModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tile Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6 id="modalTitle"></h6>
+                <div id="modalDetails"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentTiles = [];
+
+function showLoading() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('errorMessage').style.display = 'none';
+}
+
+function hideLoading() {
+    document.getElementById('loadingIndicator').style.display = 'none';
+}
+
+function showError(message) {
+    document.getElementById('errorMessage').textContent = message;
+    document.getElementById('errorMessage').style.display = 'block';
+    hideLoading();
+}
+
+function loadTiles() {
+    const isLand = document.getElementById('landTiles').checked;
+    const endpoint = isLand ? '/api/tiledata/land' : '/api/tiledata/static';
+
+    showLoading();
+    fetch(endpoint)
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.error) {
+                showError(data.error);
+                return;
+            }
+            currentTiles = data.tiles;
+            displayTiles(currentTiles, isLand);
+        })
+        .catch(error => {
+            showError('Failed to load tiles: ' + error.message);
+        });
+}
+
+function displayTiles(tiles, isLand) {
+    const grid = document.getElementById('tilesGrid');
+    grid.innerHTML = '';
+
+    tiles.forEach(tile => {
+        const div = document.createElement('div');
+        div.className = 'asset-item';
+        div.onclick = () => showTileModal(tile, isLand);
+
+        let info = '';
+        if (isLand) {
+            info = `Flags: ${tile.flags}`;
+        } else {
+            info = `Weight: ${tile.weight}`;
+        }
+
+        div.innerHTML = `
+            <div class="asset-id">#${tile.id}</div>
+            <div class="tile-info">${tile.name}</div>
+            <div class="tile-info">${info}</div>
+        `;
+        grid.appendChild(div);
+    });
+}
+
+function showTileModal(tile, isLand) {
+    document.getElementById('modalTitle').textContent = `${isLand ? 'Land' : 'Static'} Tile #${tile.id}: ${tile.name}`;
+
+    let details = '';
+    if (isLand) {
+        details = `
+            <p><strong>Flags:</strong> ${tile.flags}</p>
+            <p><strong>Texture ID:</strong> ${tile.texture_id}</p>
+        `;
+    } else {
+        details = `
+            <p><strong>Flags:</strong> ${tile.flags}</p>
+            <p><strong>Weight:</strong> ${tile.weight}</p>
+            <p><strong>Quality:</strong> ${tile.quality}</p>
+            <p><strong>Quantity:</strong> ${tile.quantity}</p>
+            <p><strong>Hue:</strong> ${tile.hue}</p>
+            <p><strong>Stacking Offset:</strong> ${tile.stacking_offset}</p>
+        `;
+    }
+
+    document.getElementById('modalDetails').innerHTML = details;
+
+    const modal = new bootstrap.Modal(document.getElementById('tileModal'));
+    modal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadTiles();
+});
+</script>
+{% endblock %}

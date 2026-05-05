@@ -1,0 +1,1 @@
+"""Ultima Online Asset Viewer - Web-based asset browser."""

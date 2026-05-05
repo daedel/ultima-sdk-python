@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Strings Viewer - Ultima Online Asset Viewer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-font"></i> String Lists</h2>
+        <p class="text-muted">Browse Ultima Online's localized text strings.</p>
+    </div>
+</div>
+
+<div class="controls">
+    <div class="row">
+        <div class="col-md-6">
+            <label for="languageInput" class="form-label">Language ID:</label>
+            <select class="form-control" id="languageInput">
+                <option value="0">English (0)</option>
+                <option value="1">French (1)</option>
+                <option value="2">German (2)</option>
+                <option value="3">Spanish (3)</option>
+                <option value="4">Japanese (4)</option>
+                <option value="5">Korean (5)</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <button class="btn btn-primary mt-4" onclick="loadStrings()">
+                <i class="fas fa-sync"></i> Load Strings
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="loadingIndicator" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Loading strings...</p>
+</div>
+
+<div id="errorMessage" class="error-message" style="display: none;"></div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="list-group" id="stringsList"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showLoading() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('errorMessage').style.display = 'none';
+}
+
+function hideLoading() {
+    document.getElementById('loadingIndicator').style.display = 'none';
+}
+
+function showError(message) {
+    document.getElementById('errorMessage').textContent = message;
+    document.getElementById('errorMessage').style.display = 'block';
+    hideLoading();
+}
+
+function loadStrings() {
+    const language = parseInt(document.getElementById('languageInput').value);
+
+    showLoading();
+    fetch(`/api/strings/${language}`)
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.error) {
+                showError(data.error);
+                return;
+            }
+            displayStrings(data);
+        })
+        .catch(error => {
+            showError('Failed to load strings: ' + error.message);
+        });
+}
+
+function displayStrings(data) {
+    const list = document.getElementById('stringsList');
+    list.innerHTML = '';
+
+    data.strings.forEach(string => {
+        const item = document.createElement('div');
+        item.className = 'list-group-item';
+        item.innerHTML = `
+            <div class="d-flex w-100 justify-content-between">
+                <h6 class="mb-1">#${string.id}</h6>
+            </div>
+            <p class="mb-1">${string.text}</p>
+        `;
+        list.appendChild(item);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadStrings();
+});
+</script>
+{% endblock %}

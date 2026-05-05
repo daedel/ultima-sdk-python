@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Skills Viewer - Ultima Online Asset Viewer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-star"></i> Skills</h2>
+        <p class="text-muted">Browse Ultima Online's skill definitions and properties.</p>
+    </div>
+</div>
+
+<div class="controls">
+    <button class="btn btn-primary" onclick="loadSkills()">
+        <i class="fas fa-sync"></i> Load Skills
+    </button>
+</div>
+
+<div id="loadingIndicator" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Loading skills...</p>
+</div>
+
+<div id="errorMessage" class="error-message" style="display: none;"></div>
+
+<div class="asset-grid" id="skillsGrid"></div>
+
+<div class="modal fade" id="skillModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Skill Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6 id="modalTitle"></h6>
+                <div id="modalDetails"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let skillsData = [];
+
+function showLoading() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('errorMessage').style.display = 'none';
+}
+
+function hideLoading() {
+    document.getElementById('loadingIndicator').style.display = 'none';
+}
+
+function showError(message) {
+    document.getElementById('errorMessage').textContent = message;
+    document.getElementById('errorMessage').style.display = 'block';
+    hideLoading();
+}
+
+function loadSkills() {
+    showLoading();
+    fetch('/api/skills')
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.error) {
+                showError(data.error);
+                return;
+            }
+            skillsData = data.skills;
+            displaySkills(skillsData);
+        })
+        .catch(error => {
+            showError('Failed to load skills: ' + error.message);
+        });
+}
+
+function displaySkills(skills) {
+    const grid = document.getElementById('skillsGrid');
+    grid.innerHTML = '';
+
+    skills.forEach(skill => {
+        const div = document.createElement('div');
+        div.className = 'asset-item';
+        div.onclick = () => showSkillModal(skill);
+
+        div.innerHTML = `
+            <div class="asset-id">#${skill.id}</div>
+            <div class="tile-info">${skill.name}</div>
+            <div class="tile-info">Action: ${skill.action}</div>
+        `;
+        grid.appendChild(div);
+    });
+}
+
+function showSkillModal(skill) {
+    document.getElementById('modalTitle').textContent = `Skill #${skill.id}: ${skill.name}`;
+
+    const details = `
+        <p><strong>Action:</strong> ${skill.action}</p>
+        <p><strong>Use Button:</strong> ${skill.use_button ? 'Yes' : 'No'}</p>
+    `;
+
+    document.getElementById('modalDetails').innerHTML = details;
+
+    const modal = new bootstrap.Modal(document.getElementById('skillModal'));
+    modal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadSkills();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Ultima Online Asset Viewer{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='custom.css') }}" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .asset-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+        }
+        .asset-item {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        .asset-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .asset-image {
+            max-width: 100%;
+            max-height: 150px;
+            object-fit: contain;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        .asset-id {
+            font-weight: bold;
+            color: #495057;
+            margin-top: 0.5rem;
+        }
+        .controls {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+        .hue-preview {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 1px solid #dee2e6;
+            margin: 2px;
+            border-radius: 2px;
+        }
+        .tile-info {
+            font-size: 0.875rem;
+            color: #6c757d;
+        }
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 4px;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-eye"></i> UO Asset Viewer
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/art">Art</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/gumps">Gumps</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/textures">Textures</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/hues">Hues</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/tiledata">TileData</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/animations">Animations</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/skills">Skills</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/radar">Radar</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/strings">Strings</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

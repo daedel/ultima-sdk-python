@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Gumps Viewer - Ultima Online Asset Viewer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-window-maximize"></i> UI Elements (Gumps)</h2>
+        <p class="text-muted">Browse Ultima Online's user interface elements and graphics.</p>
+    </div>
+</div>
+
+<div class="controls">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="number" class="form-control" id="gumpIdInput" placeholder="Enter Gump ID" min="0">
+                <button class="btn btn-outline-primary" type="button" onclick="loadSpecificGump()">
+                    <i class="fas fa-search"></i> Load
+                </button>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="d-flex justify-content-end">
+                <button class="btn btn-outline-secondary me-2" onclick="loadRange()">
+                    <i class="fas fa-list"></i> Load Range
+                </button>
+                <button class="btn btn-outline-info" onclick="clearGrid()">
+                    <i class="fas fa-trash"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="row mt-3">
+        <div class="col-md-6">
+            <label for="startRange" class="form-label">Start ID:</label>
+            <input type="number" class="form-control" id="startRange" value="0" min="0">
+        </div>
+        <div class="col-md-6">
+            <label for="endRange" class="form-label">End ID:</label>
+            <input type="number" class="form-control" id="endRange" value="100" min="0">
+        </div>
+    </div>
+</div>
+
+<div id="loadingIndicator" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Loading gumps...</p>
+</div>
+
+<div id="errorMessage" class="error-message" style="display: none;"></div>
+
+<div class="asset-grid" id="gumpGrid"></div>
+
+<div class="modal fade" id="gumpModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Gump Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" alt="Gump" class="img-fluid">
+                <div class="mt-3">
+                    <h6>ID: <span id="modalId"></span></h6>
+                    <p id="modalInfo"></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="downloadImage()">
+                    <i class="fas fa-download"></i> Download PNG
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentGumpData = {};
+
+function showLoading() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('errorMessage').style.display = 'none';
+}
+
+function hideLoading() {
+    document.getElementById('loadingIndicator').style.display = 'none';
+}
+
+function showError(message) {
+    document.getElementById('errorMessage').textContent = message;
+    document.getElementById('errorMessage').style.display = 'block';
+    hideLoading();
+}
+
+function loadSpecificGump() {
+    const gumpId = parseInt(document.getElementById('gumpIdInput').value);
+    if (isNaN(gumpId) || gumpId < 0) {
+        showError('Please enter a valid Gump ID');
+        return;
+    }
+
+    showLoading();
+    fetch(`/api/gumps/${gumpId}`)
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.error) {
+                showError(data.error);
+                return;
+            }
+            displayGumps([data]);
+            currentGumpData[gumpId] = data;
+        })
+        .catch(error => {
+            showError('Failed to load gump: ' + error.message);
+        });
+}
+
+function loadRange() {
+    const startId = parseInt(document.getElementById('startRange').value);
+    const endId = parseInt(document.getElementById('endRange').value);
+
+    if (isNaN(startId) || isNaN(endId) || startId > endId) {
+        showError('Please enter valid range');
+        return;
+    }
+
+    showLoading();
+    const promises = [];
+    for (let i = startId; i <= Math.min(endId, startId + 50); i++) {
+        promises.push(
+            fetch(`/api/gumps/${i}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.error) {
+                        currentGumpData[i] = data;
+                        return data;
+                    }
+                    return null;
+                })
+                .catch(() => null)
+        );
+    }
+
+    Promise.all(promises).then(results => {
+        hideLoading();
+        const validResults = results.filter(r => r !== null);
+        displayGumps(validResults);
+    });
+}
+
+function displayGumps(gumpItems) {
+    const grid = document.getElementById('gumpGrid');
+    gumpItems.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'asset-item';
+        div.innerHTML = `
+            <img src="${item.image}" alt="Gump ${item.id}" class="asset-image" onclick="showModal(${item.id})">
+            <div class="asset-id">#${item.id}</div>
+            <div class="tile-info">${item.width}×${item.height}</div>
+        `;
+        grid.appendChild(div);
+    });
+}
+
+function showModal(gumpId) {
+    const data = currentGumpData[gumpId];
+    if (!data) return;
+
+    document.getElementById('modalImage').src = data.image;
+    document.getElementById('modalId').textContent = gumpId;
+    document.getElementById('modalInfo').textContent = `${data.width}×${data.height} pixels`;
+
+    const modal = new bootstrap.Modal(document.getElementById('gumpModal'));
+    modal.show();
+}
+
+function downloadImage() {
+    const gumpId = document.getElementById('modalId').textContent;
+    const data = currentGumpData[gumpId];
+    if (!data) return;
+
+    const link = document.createElement('a');
+    link.href = data.image;
+    link.download = `gump_${gumpId}.png`;
+    link.click();
+}
+
+function clearGrid() {
+    document.getElementById('gumpGrid').innerHTML = '';
+    currentGumpData = {};
+    document.getElementById('errorMessage').style.display = 'none';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadRange();
+});
+</script>
+{% endblock %}

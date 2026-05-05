@@ -52,6 +52,7 @@ If Pillow is unavailable, image examples fall back to writing `.ppm` files inste
 - `python -m examples.tile_matrix_example`
 - `python -m examples.animation_edit_example`
 - `python -m examples.package_init_example`
+- `python -m examples.all_in_one_example` (comprehensive demo with debug output)
 
 ### Client-backed examples (require a UO client directory)
 
@@ -74,7 +75,7 @@ If Pillow is unavailable, image examples fall back to writing `.ppm` files inste
 - `python -m examples.equipconv_example --uo-root /path/to/ultima_online`
 - `python -m examples.verdata_example --uo-root /path/to/ultima_online`
 
-### Windows-only example
+### Web applications
 
-- `python -m examples.client_example`
+- `python examples/asset_viewer/app.py --uo-root /path/to/ultima_online` (comprehensive web-based asset viewer)
 ```

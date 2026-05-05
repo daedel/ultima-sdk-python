@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Hues Viewer - Ultima Online Asset Viewer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-palette"></i> Color Palettes (Hues)</h2>
+        <p class="text-muted">Browse Ultima Online's color transformation palettes.</p>
+    </div>
+</div>
+
+<div class="controls">
+    <button class="btn btn-primary" onclick="loadHues()">
+        <i class="fas fa-sync"></i> Load Hues
+    </button>
+</div>
+
+<div id="loadingIndicator" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Loading hues...</p>
+</div>
+
+<div id="errorMessage" class="error-message" style="display: none;"></div>
+
+<div class="asset-grid" id="huesGrid"></div>
+
+<div class="modal fade" id="hueModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Hue Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6 id="modalTitle"></h6>
+                <div id="modalColors" class="d-flex flex-wrap"></div>
+                <div class="mt-3">
+                    <p><strong>Table Range:</strong> <span id="modalRange"></span></p>
+                    <p><strong>Colors:</strong> <span id="modalCount"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let huesData = [];
+
+function showLoading() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('errorMessage').style.display = 'none';
+}
+
+function hideLoading() {
+    document.getElementById('loadingIndicator').style.display = 'none';
+}
+
+function showError(message) {
+    document.getElementById('errorMessage').textContent = message;
+    document.getElementById('errorMessage').style.display = 'block';
+    hideLoading();
+}
+
+function loadHues() {
+    showLoading();
+    fetch('/api/hues')
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.error) {
+                showError(data.error);
+                return;
+            }
+            huesData = data.hues;
+            displayHues(huesData);
+        })
+        .catch(error => {
+            showError('Failed to load hues: ' + error.message);
+        });
+}
+
+function displayHues(hues) {
+    const grid = document.getElementById('huesGrid');
+    grid.innerHTML = '';
+
+    hues.forEach(hue => {
+        const div = document.createElement('div');
+        div.className = 'asset-item';
+        div.onclick = () => showHueModal(hue);
+
+        let colorPreviews = '';
+        for (let i = 0; i < Math.min(hue.colors.length, 8); i++) {
+            const color = hue.colors[i];
+            // Convert 16-bit color to RGB
+            const r = ((color >> 10) & 0x1F) * 8;
+            const g = ((color >> 5) & 0x1F) * 8;
+            const b = (color & 0x1F) * 8;
+            colorPreviews += `<div class="hue-preview" style="background-color: rgb(${r},${g},${b})"></div>`;
+        }
+
+        div.innerHTML = `
+            <div class="mb-2">${colorPreviews}</div>
+            <div class="asset-id">#${hue.id}</div>
+            <div class="tile-info">${hue.name}</div>
+        `;
+        grid.appendChild(div);
+    });
+}
+
+function showHueModal(hue) {
+    document.getElementById('modalTitle').textContent = `Hue #${hue.id}: ${hue.name}`;
+
+    const colorsDiv = document.getElementById('modalColors');
+    colorsDiv.innerHTML = '';
+
+    hue.colors.forEach((color, index) => {
+        const r = ((color >> 10) & 0x1F) * 8;
+        const g = ((color >> 5) & 0x1F) * 8;
+        const b = (color & 0x1F) * 8;
+
+        const colorDiv = document.createElement('div');
+        colorDiv.className = 'hue-preview';
+        colorDiv.style.backgroundColor = `rgb(${r},${g},${b})`;
+        colorDiv.title = `Color ${index}: #${color.toString(16).padStart(4, '0').toUpperCase()}`;
+        colorsDiv.appendChild(colorDiv);
+    });
+
+    document.getElementById('modalRange').textContent = `${hue.tableStart} - ${hue.tableEnd}`;
+    document.getElementById('modalCount').textContent = hue.colors.length;
+
+    const modal = new bootstrap.Modal(document.getElementById('hueModal'));
+    modal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadHues();
+});
+</script>
+{% endblock %}

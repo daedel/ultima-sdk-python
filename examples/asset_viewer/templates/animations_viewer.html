@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Animations Viewer - Ultima Online Asset Viewer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-play"></i> Animations</h2>
+        <p class="text-muted">Browse Ultima Online's character and object animations.</p>
+    </div>
+</div>
+
+<div class="controls">
+    <div class="row">
+        <div class="col-md-4">
+            <label for="bodyIdInput" class="form-label">Body ID:</label>
+            <input type="number" class="form-control" id="bodyIdInput" value="1" min="0">
+        </div>
+        <div class="col-md-4">
+            <label for="actionInput" class="form-label">Action:</label>
+            <input type="number" class="form-control" id="actionInput" value="0" min="0">
+        </div>
+        <div class="col-md-4">
+            <label for="directionInput" class="form-label">Direction:</label>
+            <input type="number" class="form-control" id="directionInput" value="0" min="0" max="7">
+        </div>
+    </div>
+    <div class="mt-3">
+        <button class="btn btn-primary" onclick="loadAnimation()">
+            <i class="fas fa-play"></i> Load Animation
+        </button>
+    </div>
+</div>
+
+<div id="loadingIndicator" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Loading animation...</p>
+</div>
+
+<div id="errorMessage" class="error-message" style="display: none;"></div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="asset-grid" id="animationGrid"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showLoading() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('errorMessage').style.display = 'none';
+}
+
+function hideLoading() {
+    document.getElementById('loadingIndicator').style.display = 'none';
+}
+
+function showError(message) {
+    document.getElementById('errorMessage').textContent = message;
+    document.getElementById('errorMessage').style.display = 'block';
+    hideLoading();
+}
+
+function loadAnimation() {
+    const bodyId = parseInt(document.getElementById('bodyIdInput').value);
+    const action = parseInt(document.getElementById('actionInput').value);
+    const direction = parseInt(document.getElementById('directionInput').value);
+
+    showLoading();
+    fetch(`/api/animations/${bodyId}`)
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.error) {
+                showError(data.error);
+                return;
+            }
+            displayAnimation(data);
+        })
+        .catch(error => {
+            showError('Failed to load animation: ' + error.message);
+        });
+}
+
+function displayAnimation(data) {
+    const grid = document.getElementById('animationGrid');
+    grid.innerHTML = '';
+
+    data.frames.forEach((frame, index) => {
+        const div = document.createElement('div');
+        div.className = 'asset-item';
+        div.innerHTML = `
+            <img src="${frame.image}" alt="Frame ${frame.frame}" class="asset-image">
+            <div class="asset-id">Frame ${frame.frame}</div>
+            <div class="tile-info">${frame.width}×${frame.height}</div>
+        `;
+        grid.appendChild(div);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadAnimation();
+});
+</script>
+{% endblock %}
