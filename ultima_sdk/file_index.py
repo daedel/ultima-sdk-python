@@ -1,9 +1,10 @@
 """
 FileIndex module - Manages indexed file access for .mul files.
 
-Verdata patching is NOT handled here. Use Verdata.apply() at startup to
-populate each module's _patch_cache. This keeps FileIndex stateless with
-respect to verdata and avoids initialization-order cycles.
+When a FileIndex is constructed with a file_id, read_raw() will consult the
+global Verdata patch table first and return patched bytes if available.
+For FileIndex instances without a file_id, Verdata is not consulted and
+patching should be handled externally via the module's own _patch_cache.
 """
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
@@ -58,7 +59,7 @@ class FileIndex:
     ):
         self.idx_path = idx_path
         self.mul_path = mul_path
-        self.file_id = file_id  # kept for external reference; not used internally
+        self.file_id = file_id
         self.entry_size = entry_size
         self.entries: List[IndexEntry] = []
         if idx_path and mul_path:
@@ -78,7 +79,7 @@ class FileIndex:
                         # where -1 indicates a missing entry.
                         offset = reader.read_int32()
                         length = reader.read_int32()
-                        extra  = reader.read_int32()
+                        extra = reader.read_int32()
                         self.entries.append(IndexEntry(offset, length, extra))
                     except EOFError:
                         break
@@ -101,8 +102,8 @@ class FileIndex:
                 try:
                     offset = reader.read_uint32()
                     length = reader.read_uint32()
-                    extra  = reader.read_uint32()
-                    entry  = FileIndexEntry(offset=offset, length=length, extra=extra)
+                    extra = reader.read_uint32()
+                    entry = FileIndexEntry(offset=offset, length=length, extra=extra)
                     self.entries.append(entry)
                 except EOFError:
                     break
@@ -136,11 +137,23 @@ class FileIndex:
     def read_raw(self, index: int) -> Optional[bytes]:
         """Read raw bytes for an entry from the associated mul file.
 
+        If this FileIndex was constructed with a file_id, the global Verdata
+        patch table is consulted first.  When a matching patch exists the
+        patched bytes are returned directly without touching the mul file.
+
         Returns None for missing entries (e.g. offset < 0 or length <= 0).
-        Verdata patching is NOT performed here -- use Verdata.apply() instead.
         """
         if index is None or index < 0:
             return None
+        # Consult Verdata when we have a file_id binding.
+        if self.file_id is not None:
+            try:
+                from .verdata import Verdata
+
+                if Verdata.has_patch(self.file_id, index):
+                    return Verdata.read_patch(self.file_id, index)
+            except Exception:
+                pass
         try:
             entry = self.get_entry(index)
         except IndexError:
