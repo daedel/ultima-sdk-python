@@ -8,9 +8,6 @@ This module provides a small, deterministic API:
 - Read patched bytes for a given (file_id, block_id) pair.
 - Apply all loaded patches to the relevant in-memory SDK modules via apply().
 
-Integration point: `FileIndex.read_raw()` can consult `Verdata` when a
-`FileIndex` is constructed with a `file_id`.
-
 FILE_IDS maps the integer file_id field in verdata entries to the target
 MUL filename, matching ClassicUO's VerdataLoader.cs mapping exactly.
 """
@@ -64,18 +61,18 @@ FILE_IDS: Dict[int, str] = {
 
 @dataclass(frozen=True)
 class VerdataEntry:
-    file_id: int
+    file_id:  int
     block_id: int
-    offset: int
-    length: int
-    extra: int = 0
+    offset:   int
+    length:   int
+    extra:    int = 0
 
 
 class Verdata:
     """Static accessor for verdata patches."""
 
-    _entries: Dict[Tuple[int, int], VerdataEntry] = {}
-    _path: Optional[str] = None
+    _entries:     Dict[Tuple[int, int], VerdataEntry] = {}
+    _path:        Optional[str] = None
     _initialized: bool = False
 
     @classmethod
@@ -85,32 +82,32 @@ class Verdata:
         if path is None:
             path = Files.get_file_path("verdata.mul")
         if not path:
-            cls._entries = {}
-            cls._path = None
+            cls._entries     = {}
+            cls._path        = None
             cls._initialized = True
             return False
         cls._path = path
         try:
-            raw = None
             with open(path, "rb") as f:
                 raw = f.read()
-            if raw is None or len(raw) < 4:
+            if not raw or len(raw) < 4:
                 raise FileParseError("Invalid verdata header", file_path=path)
-            (count,) = struct.unpack_from("<i", raw, 0)
-            if count < 0 or count > 1_000_000:
+
+            (count,) = struct.unpack_from("<I", raw, 0)
+            if count > 1_000_000:
                 raise FileParseError("Invalid verdata entry count", file_path=path)
+
             table_off = 4
             table_len = count * 20
             if len(raw) < table_off + table_len:
                 raise FileParseError("Truncated verdata table", file_path=path)
+
             entries: Dict[Tuple[int, int], VerdataEntry] = {}
             for i in range(count):
                 off = table_off + (i * 20)
                 file_id, block_id, data_off, length, extra = struct.unpack_from(
-                    "<iiiii", raw, off
+                    "<IIIII", raw, off
                 )
-                if length <= 0 or data_off < 0:
-                    continue
                 entries[(int(file_id), int(block_id))] = VerdataEntry(
                     file_id=int(file_id),
                     block_id=int(block_id),
@@ -118,10 +115,11 @@ class Verdata:
                     length=int(length),
                     extra=int(extra),
                 )
-            cls._entries = entries
+
+            cls._entries     = entries
             cls._initialized = True
             return True
-        except FileParseError:
+        except (FileParseError, FileAccessException):
             raise
         except Exception as e:
             raise FileAccessException(
@@ -133,7 +131,9 @@ class Verdata:
         return cls._initialized
 
     @classmethod
-    def get_entry(cls, file_id: int, block_id: int) -> Optional[VerdataEntry]:
+    def get_entry(
+        cls, file_id: int, block_id: int
+    ) -> Optional[VerdataEntry]:
         if not cls._initialized:
             cls.initialize()
         return cls._entries.get((int(file_id), int(block_id)))
@@ -145,6 +145,7 @@ class Verdata:
     @classmethod
     def read_patch(cls, file_id: int, block_id: int) -> Optional[bytes]:
         """Read patch bytes for the given file/block.
+
         Returns None if no patch exists.
         """
         entry = cls.get_entry(file_id, block_id)
@@ -158,7 +159,9 @@ class Verdata:
                 data = f.read(entry.length)
         except Exception as e:
             raise FileAccessException(
-                "Failed to read verdata patch", file_path=cls._path, cause=e
+                "Failed to read verdata patch",
+                file_path=cls._path,
+                cause=e,
             )
         if data is None or len(data) != entry.length:
             raise FileParseError("Truncated verdata patch", file_path=cls._path)
@@ -168,21 +171,24 @@ class Verdata:
     def apply(cls) -> Dict[str, int]:
         """Apply all loaded verdata patches to the relevant in-memory SDK modules.
 
-        Routes each patch by file_id to the appropriate module's patch handler.
-        Currently supported targets:
+        Routes each patch by file_id to the appropriate module patch handler.
+        Modules must already be initialized (or will auto-initialize on first use).
 
-            file_id 30  ->  TileData   (tiledata.mul)
-            file_id 4   ->  Art        (art.mul)
-            file_id 11/12 -> Gumps    (gumpidx.mul / gumps.mul)
-            file_id 17  ->  Hues       (hues.mul)
+        Supported targets
+        -----------------
+        file_id  0 / 22 / 25 / 28 -> map*.mul  -> Map tile_matrix patches
+        file_id  4                 -> art.mul   -> Art
+        file_id  6                 -> anim.mul  -> Animations
+        file_id 11 / 12            -> gumps.mul -> Gumps
+        file_id 17                 -> hues.mul  -> Hues
+        file_id 21                 -> texmaps   -> Textures
+        file_id 23                 -> light.mul -> Light
+        file_id 30                 -> tiledata  -> TileData
 
-        All other file_ids are recorded in the returned stats dict under their
-        MUL filename but are not yet applied (raw bytes accessible via
-        read_patch() directly).
-
-        Returns:
-            A dict mapping MUL filename -> number of patches applied/attempted,
-            e.g. {"tiledata.mul": 12, "art.mul": 3, "skipped": 47}
+        Returns
+        -------
+        A dict mapping MUL filename -> number of patches applied/attempted,
+        plus a ``"skipped"`` key for patches with no registered handler.
         """
         if not cls._initialized:
             cls.initialize()
@@ -197,9 +203,9 @@ class Verdata:
 
             applied = False
 
-            # ------------------------------------------------------------------
+            # --------------------------------------------------------------
             # file_id 30 -- tiledata.mul
-            # ------------------------------------------------------------------
+            # --------------------------------------------------------------
             if file_id == 30:
                 try:
                     from .tiledata import TileData
@@ -208,10 +214,10 @@ class Verdata:
                 except Exception:
                     pass
 
-            # ------------------------------------------------------------------
+            # --------------------------------------------------------------
             # file_id 4 -- art.mul (static tiles)
-            # file_id 3 -- artidx.mul (index -- skip; art.py rebuilds from art.mul)
-            # ------------------------------------------------------------------
+            # file_id 3 -- artidx.mul (index; skip: art.py rebuilds from mul)
+            # --------------------------------------------------------------
             elif file_id == 4:
                 try:
                     from .art import Art
@@ -220,9 +226,9 @@ class Verdata:
                 except Exception:
                     pass
 
-            # ------------------------------------------------------------------
-            # file_id 11/12 -- gumpidx.mul / gumps.mul
-            # ------------------------------------------------------------------
+            # --------------------------------------------------------------
+            # file_id 11 / 12 -- gumpidx.mul / gumps.mul
+            # --------------------------------------------------------------
             elif file_id in (11, 12):
                 try:
                     from .gumps import Gumps
@@ -231,14 +237,65 @@ class Verdata:
                 except Exception:
                     pass
 
-            # ------------------------------------------------------------------
+            # --------------------------------------------------------------
             # file_id 17 -- hues.mul
-            # ------------------------------------------------------------------
+            # --------------------------------------------------------------
             elif file_id == 17:
                 try:
                     from .hues import Hues
                     Hues.apply_verdata_patch(block_id, data, entry.extra)
                     applied = True
+                except Exception:
+                    pass
+
+            # --------------------------------------------------------------
+            # file_id 21 -- texmaps.mul
+            # --------------------------------------------------------------
+            elif file_id == 21:
+                try:
+                    from .textures import Textures
+                    Textures.apply_verdata_patch(block_id, data)
+                    applied = True
+                except Exception:
+                    pass
+
+            # --------------------------------------------------------------
+            # file_id 23 -- light.mul
+            # --------------------------------------------------------------
+            elif file_id == 23:
+                try:
+                    from .light import Light
+                    Light.apply_verdata_patch(block_id, data)
+                    applied = True
+                except Exception:
+                    pass
+
+            # --------------------------------------------------------------
+            # file_id 6 -- anim.mul
+            # --------------------------------------------------------------
+            elif file_id == 6:
+                try:
+                    from .animations import Animations
+                    Animations.apply_verdata_patch(block_id, data)
+                    applied = True
+                except Exception:
+                    pass
+
+            # --------------------------------------------------------------
+            # file_id 0 / 22 -- map0.mul
+            # file_id 25      -- map1.mul
+            # file_id 28      -- map2.mul
+            # (map patches are forwarded to the TileMatrix instance)
+            # --------------------------------------------------------------
+            elif file_id in (0, 22, 25, 28):
+                map_id_map = {0: 0, 22: 0, 25: 1, 28: 2}
+                target_map_id = map_id_map[file_id]
+                try:
+                    from .map import Map
+                    map_data = Map.get_map(target_map_id)
+                    if map_data and map_data.tile_matrix:
+                        map_data.tile_matrix.apply_verdata_patch(block_id, data)
+                        applied = True
                 except Exception:
                     pass
 
