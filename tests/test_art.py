@@ -1,7 +1,6 @@
 """Tests for art module."""
 
 import struct
-import pytest
 
 from ultima_sdk.art import Art
 
