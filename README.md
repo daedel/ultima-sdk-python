@@ -194,6 +194,66 @@ for skill_id in range(150):
         print(f"{skill.name}: gainrate={skill.gain_rate}")
 ```
 
+### Cliloc
+
+Reads `cliloc.enu`, `cliloc.deu`, and other localization files. Maps integer
+entry numbers to their localized UTF-8 strings.
+
+```python
+from ultima_sdk.cliloc import Cliloc
+
+# Auto-discover the cliloc file from the configured UO client directory.
+Cliloc.initialize()
+
+# Or load a specific language file directly.
+Cliloc.initialize(path="/path/to/cliloc.enu")
+
+# Look up a string by its numeric ID.
+print(Cliloc.get_string(3000001))   # e.g. "Cancel"
+print(Cliloc.get_string(1019548))   # e.g. "You have died."
+
+# Check existence without triggering None handling.
+if Cliloc.contains(3000432):
+    print(Cliloc.get_string(3000432))
+
+# Total number of loaded entries.
+print(Cliloc.count())
+
+# Iterate over all entries.
+for entry in Cliloc.iter_entries():
+    print(entry.number, entry.text)
+
+# Load a file once without affecting the shared cache.
+entries = Cliloc.load_file("/path/to/cliloc.deu")  # returns dict[int, str]
+```
+
+Convert between cliloc binary and CSV for editing in a spreadsheet:
+
+```python
+from ultima_sdk.cliloc import Cliloc
+
+# cliloc -> CSV (columns: number, flag, text)
+Cliloc.convert_to_csv("/uo/cliloc.enu", "cliloc.csv")
+
+# CSV -> cliloc binary
+Cliloc.convert_from_csv("cliloc.csv", "cliloc.custom1")
+
+# Or step by step
+entries = Cliloc.import_csv("cliloc.csv")
+Cliloc.save_file("cliloc.custom1", entries)
+
+# Export / import without touching files on disk
+data = Cliloc.build_bytes({3000001: "Cancel"})
+parsed = Cliloc.parse_bytes(data)
+```
+
+`Cliloc.initialize()` accepts an optional `language` argument (default `"enu"`)
+used for auto-discovery when no explicit `path` is given:
+
+```python
+Cliloc.initialize(language="deu")   # looks for cliloc.deu first
+```
+
 ### Rendering
 
 All art, animation, and gump objects have a `.to_image()` method that returns a `PIL.Image`.
@@ -230,6 +290,7 @@ ultima-sdk-python/
     ├── skills.py           # Skills.def reader
     ├── multis.py           # Multi-object data
     ├── textures.py         # Texture reader
+    ├── cliloc.py           # Cliloc localization reader
     ├── sound.py            # Sound/music reader
     ├── uop.py              # UOP file format support
     ├── verdata.py          # Version data (patching)
@@ -243,6 +304,7 @@ The [`examples/`](examples/) directory contains runnable scripts for every major
 
 | File | Description |
 |------|-------------|
+| `cliloc_example.py` | Load and query localization strings |
 | `art_example.py` | Load and save art tiles as PNG |
 | `animations_gif_example.py` | Export animations to GIF |
 | `map_example.py` | Query static objects on a map |
