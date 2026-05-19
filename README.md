@@ -227,7 +227,21 @@ for entry in Cliloc.iter_entries():
 entries = Cliloc.load_file("/path/to/cliloc.deu")  # returns dict[int, str]
 ```
 
-Convert between cliloc binary and CSV for editing in a spreadsheet:
+Convert between cliloc binary and CSV from the terminal (after `pip install -e .`):
+
+```bash
+ultima-cliloc to-csv   /uo/cliloc.enu  cliloc.csv
+ultima-cliloc from-csv cliloc.csv      cliloc.custom1
+```
+
+Without installing, use the module directly:
+
+```bash
+python -m ultima_sdk.cliloc_cli to-csv   cliloc.enu cliloc.csv
+python -m ultima_sdk.cliloc_cli from-csv cliloc.csv cliloc.custom1
+```
+
+Same conversions from Python:
 
 ```python
 from ultima_sdk.cliloc import Cliloc
